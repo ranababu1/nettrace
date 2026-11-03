@@ -3,10 +3,66 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:NetTrace.App"
+        xmlns:vm="clr-namespace:NetTrace.App.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+        Title="{Binding Title}"
+        Width="760" Height="520" MinWidth="480" MinHeight="360"
+        WindowStartupLocation="CenterScreen">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,24" MaxWidth="900">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                <TextBlock Text="{Binding Title}" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="{Binding ApplicationVersion, StringFormat=v{0}}"
+                           Style="{StaticResource CaptionTextStyle}"
+                           Margin="12,0,0,5" VerticalAlignment="Bottom" />
+            </StackPanel>
 
-    </Grid>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <!-- Pause glyph plus text label: state is never conveyed by colour alone. -->
+                    <TextBlock Grid.Column="0" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                               FontSize="28" Margin="0,2,16,0" VerticalAlignment="Top"
+                               AutomationProperties.Name="Monitoring state icon" />
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,4">
+                            <Run Text="Monitoring state:" />
+                            <Run Text="{Binding MonitoringState, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding MonitoringStateDescription}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Application" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Started" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding StartedAtText}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Data folder" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DataDirectory, Mode=OneWay}" IsReadOnly="True"
+                                 TextWrapping="Wrap" AutomationProperties.Name="Data folder path"
+                                 ToolTip="Local database, logs and exports are stored here. Nothing is sent to the cloud." />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                        <Button Content="Open data folder" Command="{Binding OpenDataFolderCommand}" Margin="0,0,8,0" />
+                        <Button Content="Exit" Command="{Binding ExitCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </Window>
