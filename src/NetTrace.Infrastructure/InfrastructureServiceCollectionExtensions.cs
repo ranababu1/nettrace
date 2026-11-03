@@ -17,6 +17,7 @@ using NetTrace.Core.Throughput;
 using NetTrace.Infrastructure.Network;
 using NetTrace.Infrastructure.Persistence;
 using NetTrace.Infrastructure.Persistence.Migrations;
+using NetTrace.Infrastructure.Startup;
 using NetTrace.Infrastructure.Storage;
 using NetTrace.Infrastructure.Time;
 
@@ -36,6 +37,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHostedService<DatabaseInitializer>();
         services.AddSingleton<ISettingsRepository, SqliteSettingsRepository>();
         services.AddSingleton<IMonitoringConfigurationStore, MonitoringConfigurationStore>();
+        services.AddSingleton<IAppPreferencesStore, AppPreferencesStore>();
+        services.AddSingleton<IStartupRegistration, RegistryStartupRegistration>();
 
         services.AddSingleton<INetworkInterfaceProvider, SystemNetworkInterfaceProvider>();
         services.AddSingleton<SqliteMonitoringRepository>();
