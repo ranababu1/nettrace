@@ -6,6 +6,10 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- Daily statistics calculator in Core (`Statistics`): elapsed, observed, healthy, outage and
+  unmonitored time, uptime (healthy / observed, gaps excluded) and monitoring coverage, incident
+  count and longest, DNS/HTTPS failure counts, and per probe type and target latency
+  (average, median, p95, maximum), packet loss and jitter. Not yet shown in the UI.
 - Outage detection engine in Core (`Incidents`): a per-cycle classifier (local interface,
   gateway, external connectivity, DNS, HTTPS) that needs independent probes to agree, and an
   `IncidentTracker` with a confirmation threshold, recovery threshold, merge window and gap
