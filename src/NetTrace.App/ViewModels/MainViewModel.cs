@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows.Input;
 using NetTrace.App.Services;
@@ -168,6 +168,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             : sample.UnavailableReason ?? "Unavailable";
     }
 
+    private string DescribeIncident(Core.Incidents.Incident incident)
+    {
+        var what = incident.Classification switch
+        {
+            Core.Incidents.IncidentClassification.LocalInterfaceDisconnected => "This computer has no connected network.",
+            Core.Incidents.IncidentClassification.GatewayUnreachable => "Your router is not responding.",
+            Core.Incidents.IncidentClassification.ExternalConnectivityUnavailable => "Your router responds but the internet does not.",
+            Core.Incidents.IncidentClassification.DnsResolutionFailure => "The internet is reachable but website names are not resolving.",
+            Core.Incidents.IncidentClassification.HttpsConnectivityFailure => "The internet is reachable but websites are not loading.",
+            _ => "Connectivity problem.",
+        };
+        return what + " Since " + FormatLocal(incident.StartedAtUtc) + ".";
+    }
+
     private void Apply(MonitoringStatus status)
     {
         (MonitoringState, MonitoringStateGlyph, MonitoringStateDescription) = status.State switch
@@ -175,7 +189,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             Core.Monitoring.MonitoringState.Running => (
                 "Monitoring",
                 "",
-                "Checking your router and the internet in the background. Outage detection arrives in a later version; these are raw measurements."),
+                "Checking your router and the internet in the background. No problems detected."),
             Core.Monitoring.MonitoringState.Disabled => (
                 "Monitoring paused",
                 "",
@@ -187,6 +201,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             Core.Monitoring.MonitoringState.Stopped => ("Stopped", "", "Monitoring has stopped."),
             _ => ("Starting", "", "Preparing the first measurement."),
         };
+
+        if (status.State == Core.Monitoring.MonitoringState.Running)
+        {
+            if (status.OpenIncident is { } incident)
+            {
+                MonitoringState = "Problem detected";
+                MonitoringStateDescription = DescribeIncident(incident);
+            }
+            else if (status.IncidentSuspected)
+            {
+                MonitoringState = "Checking a possible problem";
+                MonitoringStateDescription = "Some measurements failed. NetTrace waits for several in a row before calling it an outage.";
+            }
+        }
 
         LastSuccessText = status.LastSuccessfulMeasurementAtUtc is { } success ? FormatLocal(success) : "None yet";
         LastError = status.LastError;

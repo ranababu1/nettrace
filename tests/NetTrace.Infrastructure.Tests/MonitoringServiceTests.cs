@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging.Abstractions;
 using NetTrace.Core.Configuration;
+using NetTrace.Core.Incidents;
 using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
 using NetTrace.Core.Probes;
@@ -85,6 +86,33 @@ public class MonitoringServiceTests
     }
 
     [Fact]
+    public async Task ConsecutiveFailingCycles_ConfirmAndPersistAnIncident_AndPublishItInStatus()
+    {
+        var harness = new Harness(cyclesBeforeStop: 3);
+        harness.Probe.FailExternal = true;
+
+        await harness.RunAsync();
+
+        var incident = Assert.Single(harness.Incidents.Saved);
+        Assert.Equal(IncidentClassification.ExternalConnectivityUnavailable, incident.Classification);
+        Assert.Null(incident.EndedAtUtc);
+        Assert.Equal(incident.Id, harness.Service.Current.OpenIncident?.Id);
+    }
+
+    [Fact]
+    public async Task SingleFailingCycle_IsOnlySuspected_AndNothingIsPersisted()
+    {
+        var harness = new Harness(cyclesBeforeStop: 1);
+        harness.Probe.FailExternal = true;
+
+        await harness.RunAsync();
+
+        Assert.Empty(harness.Incidents.Saved);
+        Assert.True(harness.Service.Current.IncidentSuspected);
+        Assert.Null(harness.Service.Current.OpenIncident);
+    }
+
+    [Fact]
     public async Task Disabled_RecordsOpenGapClosedOnStop_AndProbesNothing()
     {
         var harness = new Harness(cyclesBeforeStop: 1, new MonitoringConfiguration { MonitoringEnabled = false });
@@ -143,6 +171,7 @@ public class MonitoringServiceTests
                 new MonitoringCycleRunner(Probe, Clock),
                 Observations,
                 Gaps,
+                Incidents,
                 Power,
                 Clock,
                 NullLogger<MonitoringService>.Instance,
@@ -168,6 +197,8 @@ public class MonitoringServiceTests
         public FakeGaps Gaps { get; } = new();
 
         public FakePower Power { get; } = new();
+
+        public FakeIncidents Incidents { get; } = new();
 
         public MonitoringService Service { get; }
 
@@ -199,6 +230,23 @@ public class MonitoringServiceTests
                 await Task.Delay(Timeout.Infinite, cancellationToken);
             }
         }
+    }
+
+    private sealed class FakeIncidents : IIncidentRepository
+    {
+        public List<Incident> Saved { get; } = [];
+
+        public Task SaveAsync(Incident incident, CancellationToken cancellationToken = default)
+        {
+            Saved.Add(incident);
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CloseOrphanedAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+
+        public Task<IReadOnlyList<Incident>> GetOverlappingAsync(
+            DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Incident>>(Saved);
     }
 
     private sealed class FakePower : IPowerEvents
@@ -243,11 +291,15 @@ public class MonitoringServiceTests
 
         public int CallCount => Volatile.Read(ref _calls);
 
+        public bool FailExternal { get; set; }
+
         public Task<ProbeResult> PingAsync(ProbeType probeType, string target, int timeoutMilliseconds, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref _calls);
+            var failed = FailExternal && probeType == ProbeType.ExternalIcmp;
             return Task.FromResult(new ProbeResult(
-                probeType, target, "fake", T0, T0.AddMilliseconds(10), ProbeOutcome.Success, 10, timeoutMilliseconds, null, null));
+                probeType, target, "fake", T0, T0.AddMilliseconds(10),
+                failed ? ProbeOutcome.Timeout : ProbeOutcome.Success, failed ? null : 10, timeoutMilliseconds, null, null));
         }
     }
 

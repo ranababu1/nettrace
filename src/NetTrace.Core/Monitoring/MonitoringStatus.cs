@@ -1,3 +1,5 @@
+﻿using NetTrace.Core.Incidents;
+
 namespace NetTrace.Core.Monitoring;
 
 /// <summary>Whether the monitoring engine is taking measurements. Serialized by name.</summary>
@@ -18,7 +20,9 @@ public sealed record MonitoringStatus(
     MonitoringState State,
     MonitoringCycle? LastCycle,
     DateTimeOffset? LastSuccessfulMeasurementAtUtc,
-    string? LastError)
+    string? LastError,
+    Incident? OpenIncident = null,
+    bool IncidentSuspected = false)
 {
     public static MonitoringStatus Initial { get; } = new(MonitoringState.Starting, null, null, null);
 }

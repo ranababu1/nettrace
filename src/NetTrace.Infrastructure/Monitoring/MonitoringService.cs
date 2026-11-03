@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Configuration;
+using NetTrace.Core.Incidents;
 using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
 using NetTrace.Core.Time;
@@ -25,6 +26,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
     private readonly MonitoringCycleRunner _runner;
     private readonly IObservationRepository _observations;
     private readonly IMonitoringGapRepository _gaps;
+    private readonly IIncidentRepository _incidents;
     private readonly IPowerEvents _powerEvents;
     private readonly IClock _clock;
     private readonly ILogger<MonitoringService> _logger;
@@ -39,10 +41,11 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         MonitoringCycleRunner runner,
         IObservationRepository observations,
         IMonitoringGapRepository gaps,
+        IIncidentRepository incidents,
         IPowerEvents powerEvents,
         IClock clock,
         ILogger<MonitoringService> logger)
-        : this(configurationStore, networkProvider, runner, observations, gaps, powerEvents, clock, logger, Task.Delay)
+        : this(configurationStore, networkProvider, runner, observations, gaps, incidents, powerEvents, clock, logger, Task.Delay)
     {
     }
 
@@ -52,6 +55,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         MonitoringCycleRunner runner,
         IObservationRepository observations,
         IMonitoringGapRepository gaps,
+        IIncidentRepository incidents,
         IPowerEvents powerEvents,
         IClock clock,
         ILogger<MonitoringService> logger,
@@ -62,6 +66,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         _runner = runner;
         _observations = observations;
         _gaps = gaps;
+        _incidents = incidents;
         _powerEvents = powerEvents;
         _clock = clock;
         _logger = logger;
@@ -114,6 +119,8 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
             var contextRefreshedAt = _clock.UtcNow;
             NetworkContext? lastRecordedContext = null;
             var scheduledAt = _clock.UtcNow;
+            var tracker = new IncidentTracker(configuration);
+            await CloseOrphanedIncidentsAsync(stoppingToken).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Monitoring started: every {IntervalSeconds} s, configuration version {ConfigurationVersion}.",
@@ -132,6 +139,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
 
                 var cycle = await _runner.RunAsync(configuration, version, context, scheduledAt, stoppingToken).ConfigureAwait(false);
                 lastRecordedContext = await SaveCycleAsync(cycle, lastRecordedContext, stoppingToken).ConfigureAwait(false);
+                await TrackIncidentsAsync(tracker, tracker.Observe(cycle), stoppingToken).ConfigureAwait(false);
 
                 var slot = CycleSchedule.Next(scheduledAt, _clock.UtcNow, interval);
                 if (slot.ClockMovedBackwards)
@@ -141,6 +149,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
                 else if (slot.SkippedSlots > 0)
                 {
                     await RecordMissedSlotsAsync(scheduledAt + interval, slot, stoppingToken).ConfigureAwait(false);
+                    await TrackIncidentsAsync(tracker, tracker.ObserveGap(scheduledAt + interval), stoppingToken).ConfigureAwait(false);
                 }
 
                 var wait = slot.NextScheduledAtUtc - _clock.UtcNow;
@@ -178,6 +187,49 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
             _logger.LogError(ex, "Failed to save monitoring cycle {CycleId}.", cycle.CycleId);
             Publish(Current with { LastCycle = cycle, LastSuccessfulMeasurementAtUtc = lastSuccess, LastError = "Measurements could not be saved to the database." });
             return lastRecordedContext;
+        }
+    }
+
+    private async Task CloseOrphanedIncidentsAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            var closed = await _incidents.CloseOrphanedAsync(stoppingToken).ConfigureAwait(false);
+            if (closed > 0)
+            {
+                _logger.LogWarning("Ended {Count} incident(s) left open by a previous run at their last recorded observation.", closed);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Failed to end incidents left open by a previous run.");
+        }
+    }
+
+    private async Task TrackIncidentsAsync(
+        IncidentTracker tracker, IReadOnlyList<IncidentChange> changes, CancellationToken stoppingToken)
+    {
+        foreach (var change in changes)
+        {
+            _logger.LogInformation("Incident {Kind}: {Summary}", change.Kind, change.Summary ?? change.Incident?.Classification.ToString());
+            if (change.Incident is not { } incident)
+            {
+                continue;
+            }
+
+            try
+            {
+                await _incidents.SaveAsync(incident, stoppingToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Failed to save incident {IncidentId}.", incident.Id);
+            }
+        }
+
+        if (changes.Count > 0 || Current.OpenIncident != tracker.Open || Current.IncidentSuspected != tracker.IsSuspected)
+        {
+            Publish(Current with { OpenIncident = tracker.Open, IncidentSuspected = tracker.IsSuspected });
         }
     }
 

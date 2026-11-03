@@ -1,4 +1,4 @@
-namespace NetTrace.Infrastructure.Persistence.Migrations;
+﻿namespace NetTrace.Infrastructure.Persistence.Migrations;
 
 /// <summary>
 /// The ordered list of schema migrations. Append new migrations; never modify or remove an
@@ -14,6 +14,7 @@ public static class SchemaMigrations
     [
         new(1, "InitialSchema", InitialSchemaSql),
         new(2, "ObservationOutcome", ObservationOutcomeSql),
+        new(3, "OutageIncidentId", OutageIncidentIdSql),
     ];
 
     public static int LatestVersion => All[^1].Version;
@@ -22,6 +23,13 @@ public static class SchemaMigrations
     // this migration keep a NULL Outcome and are read back from Success/TimedOut.
     private const string ObservationOutcomeSql = """
         ALTER TABLE NetworkObservations ADD COLUMN Outcome TEXT NULL;
+        """;
+
+    // Incidents are created in memory with a GUID before they are stored, so rows carry it to make
+    // saves idempotent (insert once, then update as the incident closes or reopens).
+    private const string OutageIncidentIdSql = """
+        ALTER TABLE OutageEvents ADD COLUMN IncidentId TEXT NULL;
+        CREATE UNIQUE INDEX UX_OutageEvents_IncidentId ON OutageEvents (IncidentId);
         """;
 
     private const string InitialSchemaSql = """
