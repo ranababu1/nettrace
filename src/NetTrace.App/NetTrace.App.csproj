@@ -16,6 +16,21 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Windows Forms is used only for the system tray NotifyIcon, which WPF does not provide. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\NetTrace.ico</ApplicationIcon>
+    <AssemblyTitle>NetTrace</AssemblyTitle>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avoid WinForms/WPF type-name clashes (Application, MessageBox, ...); WinForms types are referenced explicitly. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\NetTrace.ico" />
+    <Resource Include="Assets\NetTrace.png" />
+  </ItemGroup>
 
 </Project>

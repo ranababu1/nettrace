@@ -50,11 +50,16 @@ public partial class App : Application
             MainWindow = window;
             window.Show();
 
+            var tray = _host.Services.GetRequiredService<TrayIconService>();
+            tray.Initialize(ActivateMainWindow);
+            window.HiddenToTray += (_, _) => tray.NotifyHiddenToTray();
+
             _instanceGuard.ActivationRequested += () => Dispatcher.BeginInvoke(ActivateMainWindow);
         }
         catch (Exception ex)
         {
             _logger?.LogCritical(ex, "NetTrace failed to start.");
+            // ShutdownMode is explicit (the app lives in the tray), so a failed start must shut down itself.
             MessageBox.Show(
                 $"NetTrace could not start.\n\n{ex.Message}",
                 "NetTrace",
@@ -109,6 +114,7 @@ public partial class App : Application
         builder.Services.AddSingleton<IApplicationShell, WpfApplicationShell>();
         builder.Services.AddSingleton<MainViewModel>();
         builder.Services.AddSingleton<MainWindow>();
+        builder.Services.AddSingleton<TrayIconService>();
 
         return builder.Build();
     }
