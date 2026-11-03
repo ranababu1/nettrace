@@ -4,10 +4,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:NetTrace.App.ViewModels"
+        xmlns:local="clr-namespace:NetTrace.App.Converters"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="{Binding Title}"
-        Width="760" Height="520" MinWidth="480" MinHeight="360"
+        Width="760" Height="720" MinWidth="480" MinHeight="360"
         WindowStartupLocation="CenterScreen">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,24" MaxWidth="900">
@@ -24,8 +25,8 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <!-- Pause glyph plus text label: state is never conveyed by colour alone. -->
-                    <TextBlock Grid.Column="0" Text="&#xE769;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                    <!-- Glyph plus text label: state is never conveyed by colour alone. -->
+                    <TextBlock Grid.Column="0" Text="{Binding MonitoringStateGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
                                FontSize="28" Margin="0,2,16,0" VerticalAlignment="Top"
                                AutomationProperties.Name="Monitoring state icon" />
                     <StackPanel Grid.Column="1">
@@ -34,8 +35,69 @@
                             <Run Text="{Binding MonitoringState, Mode=OneWay}" />
                         </TextBlock>
                         <TextBlock Text="{Binding MonitoringStateDescription}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding LastError}" TextWrapping="Wrap" Margin="0,8,0,0" FontWeight="SemiBold"
+                                   Visibility="{Binding HasLastError, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>
                 </Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Connection" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Active connection" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConnectionText}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Default gateway" Style="{StaticResource FieldLabelTextStyle}" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GatewayText}" Margin="0,0,0,6" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Last successful check" Style="{StaticResource FieldLabelTextStyle}"
+                                   ToolTip="The most recent time any check received a reply." />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastSuccessText}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="Latest measurements" Style="{StaticResource SectionTitleTextStyle}" />
+                    <TextBlock Text="No measurements yet." Style="{StaticResource CaptionTextStyle}">
+                        <TextBlock.Visibility>
+                            <Binding Path="LatestMeasurements.Count">
+                                <Binding.Converter>
+                                    <local:ZeroToVisibleConverter />
+                                </Binding.Converter>
+                            </Binding>
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding LatestMeasurements}" AutomationProperties.Name="Latest measurements">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ProbeRowViewModel}">
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="130" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                               Margin="0,2,10,0" AutomationProperties.Name="Result icon" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Check}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Target}" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Result}" TextWrapping="Wrap"
+                                               ToolTip="{Binding MeasuredAt, StringFormat=Measured at {0}}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </Border>
 
             <Border Style="{StaticResource CardBorderStyle}">

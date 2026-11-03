@@ -78,6 +78,10 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Changed
 
+- Main window now shows live monitoring state, the active connection, default gateway, last
+  successful check and the latest result per check (text plus glyph, never colour alone),
+  updated after each cycle via `IMonitoringStatusSource`.
+
 - README rewritten as a user-facing product description.
 
 ### Removed

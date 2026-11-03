@@ -31,8 +31,9 @@ incident detection (Phase 2) and the dashboard/tray UI (Phase 3) are not started
   monitoring is a `MonitoringDisabled` gap. Observations and network snapshots (on change)
   are persisted.
 - SHA-256 checksum compute/verify for exports.
-- Shell window. **It still says *Unmonitored* even though monitoring now runs**; the
-  dashboard binding is the next task.
+- Main window shows live monitoring state (with glyph and text), active connection, default
+  gateway, last successful check, and the latest result for each check, updated after every
+  cycle. It shows no health verdict yet (classification is Phase 2).
 
 ## 5. In-progress work
 
@@ -40,8 +41,8 @@ None.
 
 ## 6. Known issues and limitations
 
-- The main window does not yet show monitoring status. There is no tray, startup
-  registration, DNS/HTTPS probes, incident classification, settings UI or export.
+- No tray, startup registration, DNS/HTTPS probes, incident classification, history,
+  settings UI or export yet. Closing the window exits the app.
 - Configuration changes take effect only after a restart (no settings UI yet).
 - Windows ICMP reports round-trip time in whole milliseconds. Sub-millisecond replies (typical
   for a wired gateway) are stored as `0` ms: a real measurement, not a missing value.
@@ -70,12 +71,9 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Dashboard: bind the main window to `IMonitoringStatusSource` (state, active connection,
-   gateway, latest latency per target, last successful measurement) with throttled
-   dispatcher updates.
-2. Sleep/resume: subscribe to power events, record `SystemSleep` gaps, and refresh network
+1. Sleep/resume: subscribe to power events, record `SystemSleep` gaps, and refresh network
    context on resume.
-3. Phase 2: DNS and HTTPS probes on their 30 s cadence.
-4. Phase 2: outage detection and classification (consecutive-failure thresholds,
+2. Phase 2: DNS and HTTPS probes on their 30 s cadence.
+3. Phase 2: outage detection and classification (consecutive-failure thresholds,
    corroboration, recovery, merge window) with deterministic tests.
-5. Use the latest observation to tighten the start of crash gaps.
+4. Use the latest observation to tighten the start of crash gaps.
