@@ -56,6 +56,26 @@ All notable changes to NetTrace. Newest entries first.
   cellular. Loopback, tunnel, down and gateway-less adapters are never active. Windows
   address/availability changes raise `NetworkChanged`.
 
+- ICMP probe (`PingProbe`): 32-byte echo with the configured timeout, a hard deadline 1 s
+  past the timeout, outcomes Success/Failure/Timeout/Error, and fixed error descriptions
+  (raw exception text is never stored).
+- Monitoring cycle runner: the gateway and every external ICMP target, probed concurrently.
+  With no default gateway, the gateway probe is recorded as `Skipped`
+  (`NoActiveConnection`), not as failed. A probe that throws unexpectedly is recorded as an
+  error, and the rest of the cycle is kept.
+- Fixed-rate cycle schedule. Cycles never overlap and missed slots are not run late in a
+  burst: they are counted and recorded as an `Unknown` monitoring gap ("system may have been
+  asleep or unresponsive"). If the clock moves backwards, the schedule resets.
+- Background `MonitoringService`: loads the saved configuration and re-reads the network
+  context on change events and at least every 60 s. Each cycle is saved in one transaction,
+  with a network snapshot whenever the active connection, gateway, addresses or DNS servers
+  change. Disabled monitoring is recorded as an open `MonitoringDisabled` gap, closed on stop.
+  A failed database write is logged and monitoring continues. Status (state, last cycle,
+  last successful measurement, last error) is exposed for the UI.
+- Observation, network-snapshot and gap repositories (`SqliteMonitoringRepository`).
+- Schema migration 2: `NetworkObservations.Outcome`, so Failure, Error and Skipped are kept
+  distinct. Rows from before v2 are read back from `Success`/`TimedOut`.
+
 ### Changed
 
 - README rewritten as a user-facing product description.
@@ -67,7 +87,10 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Tests/validation
 
-- 101 tests pass (`dotnet test NetTrace.sln -c Release`), including active-interface selection,
+- 131 tests pass (`dotnet test NetTrace.sln -c Release`), including ping status mapping and
+  loopback ping, cycle runner (skip, error isolation, cancellation), schedule (overrun, stall,
+  clock reset), repository round-trips of every outcome, and the monitoring service loop
+  (schedule, snapshots on change, missed-slot gaps, disabled gap, save failure), plus active-interface selection,
   adapter type/status mapping, a live local discovery check (no internet needed), configuration validation,
   settings round-trip and fallback, lifecycle reconciliation rules, and lifecycle integration
   (clean stop, crash, unreadable session). Earlier coverage: Core dependency rule, data-path
@@ -78,6 +101,8 @@ All notable changes to NetTrace. Newest entries first.
 - Manual smoke test: the first launch applied migration 1, and the second reported the schema
   current at version 1. Clean stop followed by a restart recorded an `ApplicationNotRunning`
   gap. A forced kill followed by a restart recorded an `UnexpectedTermination` gap and an
-  unclean-shutdown warning.
+  unclean-shutdown warning. A 22 s run on Ethernet recorded 5 cycles exactly 5 s apart
+  (gateway plus 2 external targets each, all successful, external average 10.6 ms) and one
+  network snapshot. Migration 2 was applied to the existing database.
 - Manual smoke test: the app starts, a second launch exits with code 0, closing the window
   exits with code 0, and start/stop entries are written to the log.

@@ -2,10 +2,10 @@
 
 ## 1. Project status
 
-The initial scaffold (instructions.md section 18) is complete. Phase 1 (Foundation) of
-`docs/plan.md` is in progress: DI, logging, the SQLite schema/migrations, settings and
-application lifecycle/gap tracking and network interface discovery are done. Probes, the
-monitoring scheduler and observation persistence are not.
+The initial scaffold is complete. Phase 1 (Foundation) of `docs/plan.md` has reached its
+exit criterion: observations are recorded locally while the app runs and survive restart.
+Gateway and external ICMP monitoring runs in the background. DNS/HTTPS probes, Wi-Fi details,
+incident detection (Phase 2) and the dashboard/tray UI (Phase 3) are not started.
 
 ## 2. Current version
 
@@ -20,18 +20,19 @@ monitoring scheduler and observation persistence are not.
 - Layered solution: App / Core / Infrastructure / Reporting plus three test projects.
 - Generic host + DI in the WPF app. Clean start and exit, single instance per user session.
 - Structured JSON-lines file logging to `%LOCALAPPDATA%\NetTrace\Logs\`.
-- Per-user data folder layout (`AppDataPaths`).
-- SQLite database `%LOCALAPPDATA%\NetTrace\nettrace.db`: schema v1 (all plan.md section 7
-  tables and indexes), forward-only migrations applied at startup, WAL, busy timeout plus
-  bounded retry, and refusal of databases from newer app versions.
-- Monitoring configuration with plan defaults and validation, persisted as versioned JSON
-  in `AppSettings`.
+- SQLite database `%LOCALAPPDATA%\NetTrace\nettrace.db`: schema v2, forward-only migrations
+  at startup, WAL, busy timeout plus bounded retry, and refusal of newer-version databases.
+- Monitoring configuration with plan defaults and validation, persisted as versioned JSON.
 - Lifecycle tracking: start/stop events, 30 s heartbeat, and startup reconciliation into
-  `ApplicationNotRunning` / `UnexpectedTermination` monitoring gaps.
-- Network interface and default-gateway discovery with change notifications (not yet
-  shown in the UI or persisted to `NetworkSnapshots`).
+  `ApplicationNotRunning` / `UnexpectedTermination` gaps.
+- Network interface and default-gateway discovery with change notifications.
+- Background monitoring: every interval (5 s default), gateway plus `1.1.1.1` / `8.8.8.8`
+  ICMP. Fixed-rate schedule with no overlap. Missed cycles become `Unknown` gaps and disabled
+  monitoring is a `MonitoringDisabled` gap. Observations and network snapshots (on change)
+  are persisted.
 - SHA-256 checksum compute/verify for exports.
-- Shell window showing the *Unmonitored* state, the version and the data folder.
+- Shell window. **It still says *Unmonitored* even though monitoring now runs**; the
+  dashboard binding is the next task.
 
 ## 5. In-progress work
 
@@ -39,16 +40,18 @@ None.
 
 ## 6. Known issues and limitations
 
-- No monitoring, repositories, tray, startup registration or exports yet. The UI says so.
-- Decision taken: data access uses `Microsoft.Data.Sqlite` with hand-written SQL migrations
-  rather than EF Core (plan.md section 2 allowed either). It is lighter and gives direct
-  control over batched observation writes.
-- `docs/plan.md` and `docs/instructions.md` stay in `docs/`, where they were provided, even
-  though instructions.md section 1 says they belong at the repository root.
-- The old template folder `nettrace/` and `nettrace.slnx` are still on disk (deleting them
-  was not permitted). They are excluded from git locally via `.git/info/exclude` and are not
-  in `NetTrace.sln`. Delete them manually.
-- The solution file is `NetTrace.sln` (classic format) to match instructions.md.
+- The main window does not yet show monitoring status. There is no tray, startup
+  registration, DNS/HTTPS probes, incident classification, settings UI or export.
+- Configuration changes take effect only after a restart (no settings UI yet).
+- Windows ICMP reports round-trip time in whole milliseconds. Sub-millisecond replies (typical
+  for a wired gateway) are stored as `0` ms: a real measurement, not a missing value.
+- Sleep is not yet labelled as `SystemSleep`. A sleep shows up as an `Unknown` gap of missed
+  cycles, which is accurate but less specific.
+- The gap after a crash starts at the last heartbeat (at most 30 s before the crash).
+- Decision taken: `Microsoft.Data.Sqlite` with hand-written SQL migrations rather than EF Core.
+- `docs/plan.md` and `docs/instructions.md` stay in `docs/`, where they were provided.
+- The old template folder `nettrace/` and `nettrace.slnx` are still on disk, excluded from git
+  locally via `.git/info/exclude`. Delete them manually.
 - Single-instance activation can be missed if a second launch happens in the brief window
   before the first instance has created its activation event. The second instance still exits.
 
@@ -58,7 +61,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-03: `dotnet test NetTrace.sln -c Release`, 101 passed, 0 failed, 0 skipped.
+2026-11-03: `dotnet test NetTrace.sln -c Release`, 131 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -67,11 +70,12 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Gateway and external ICMP probes with timeouts (`INetworkProbe`), plus a
-   non-overlapping scheduler that refreshes network context on `NetworkChanged` and
-   periodically.
-2. Observation and network-snapshot repositories with batched writes.
-3. Show the active connection, gateway and monitoring state on the dashboard.
-4. Sleep/resume handling: record `SystemSleep` gaps and refresh network context on resume.
-5. Known limitation to revisit: the gap after a crash starts at the last heartbeat (at most
-   30 s before the crash). Once observations exist, use the latest observation if it is newer.
+1. Dashboard: bind the main window to `IMonitoringStatusSource` (state, active connection,
+   gateway, latest latency per target, last successful measurement) with throttled
+   dispatcher updates.
+2. Sleep/resume: subscribe to power events, record `SystemSleep` gaps, and refresh network
+   context on resume.
+3. Phase 2: DNS and HTTPS probes on their 30 s cadence.
+4. Phase 2: outage detection and classification (consecutive-failure thresholds,
+   corroboration, recovery, merge window) with deterministic tests.
+5. Use the latest observation to tighten the start of crash gaps.
