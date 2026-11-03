@@ -10,6 +10,8 @@ using NetTrace.Core.Probes;
 using NetTrace.Infrastructure.Logging;
 using NetTrace.Infrastructure.Monitoring;
 using NetTrace.Infrastructure.Probes;
+using NetTrace.Infrastructure.Throughput;
+using NetTrace.Core.Throughput;
 using NetTrace.Infrastructure.Network;
 using NetTrace.Infrastructure.Persistence;
 using NetTrace.Infrastructure.Persistence.Migrations;
@@ -47,6 +49,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<MonitoringService>();
         services.AddSingleton<IMonitoringStatusSource>(sp => sp.GetRequiredService<MonitoringService>());
         services.AddHostedService(sp => sp.GetRequiredService<MonitoringService>());
+
+        services.AddSingleton<IInterfaceCounterReader, SystemInterfaceCounterReader>();
+        services.AddSingleton<ThroughputMonitor>();
+        services.AddSingleton<IThroughputSource>(sp => sp.GetRequiredService<ThroughputMonitor>());
+        services.AddHostedService(sp => sp.GetRequiredService<ThroughputMonitor>());
         return services;
     }
 
