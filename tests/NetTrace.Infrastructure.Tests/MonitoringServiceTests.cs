@@ -91,12 +91,19 @@ public class MonitoringServiceTests
         var harness = new Harness(cyclesBeforeStop: 3);
         harness.Probe.FailExternal = true;
 
-        await harness.RunAsync();
+        await harness.RunWithoutStoppingAsync();
 
         var incident = Assert.Single(harness.Incidents.Saved);
         Assert.Equal(IncidentClassification.ExternalConnectivityUnavailable, incident.Classification);
         Assert.Null(incident.EndedAtUtc);
         Assert.Equal(incident.Id, harness.Service.Current.OpenIncident?.Id);
+
+        // Stopping monitoring is a gap, not recovery: the incident is closed at its last failing cycle.
+        await harness.Service.StopAsync(CancellationToken.None);
+        Assert.Equal(2, harness.Incidents.Saved.Count);
+        Assert.Equal(incident.Id, harness.Incidents.Saved[1].Id);
+        Assert.NotNull(harness.Incidents.Saved[1].EndedAtUtc);
+        Assert.Null(harness.Service.Current.OpenIncident);
     }
 
     [Fact]
@@ -105,11 +112,36 @@ public class MonitoringServiceTests
         var harness = new Harness(cyclesBeforeStop: 1);
         harness.Probe.FailExternal = true;
 
-        await harness.RunAsync();
+        await harness.RunWithoutStoppingAsync();
 
         Assert.Empty(harness.Incidents.Saved);
         Assert.True(harness.Service.Current.IncidentSuspected);
         Assert.Null(harness.Service.Current.OpenIncident);
+        await harness.Service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task ReloadConfiguration_SwitchesBetweenRunningAndDisabled_WithoutRestartingTheHost()
+    {
+        var harness = new Harness(cyclesBeforeStop: 1);
+        harness.Probe.FailExternal = true;
+        await harness.RunWithoutStoppingAsync();
+        Assert.Equal(MonitoringState.Running, harness.Service.Current.State);
+
+        harness.Config.Configuration = new MonitoringConfiguration { MonitoringEnabled = false };
+        harness.Config.Version = 5;
+        harness.Service.ReloadConfiguration();
+        await WaitUntilAsync(() => harness.Service.Current.State == MonitoringState.Disabled);
+
+        Assert.Null(harness.Service.Current.OpenIncident);
+        Assert.Contains(harness.Gaps.Gaps, g => g.Reason == MonitoringGapReason.MonitoringDisabled);
+
+        harness.Config.Configuration = new MonitoringConfiguration();
+        harness.Service.ReloadConfiguration();
+        await WaitUntilAsync(() => harness.Service.Current.State == MonitoringState.Running);
+        Assert.Contains(harness.Observations.Saved, s => s.Cycle.ConfigurationVersion == 5);
+
+        await harness.Service.StopAsync(CancellationToken.None);
     }
 
     [Fact]
@@ -164,7 +196,8 @@ public class MonitoringServiceTests
         {
             _cyclesBeforeStop = cyclesBeforeStop;
             Network = new FakeNetwork(Clock);
-            var config = new FakeConfigStore(configuration ?? new MonitoringConfiguration(), version: 4);
+            Config = new FakeConfigStore(configuration ?? new MonitoringConfiguration(), version: 4);
+            var config = Config;
             Service = new MonitoringService(
                 config,
                 Network,
@@ -185,6 +218,8 @@ public class MonitoringServiceTests
                 }
             };
         }
+
+        public FakeConfigStore Config { get; }
 
         public FakeClock Clock { get; } = new(T0);
 
@@ -211,6 +246,12 @@ public class MonitoringServiceTests
             await Service.StartAsync(CancellationToken.None);
             await _done.Task.WaitAsync(TimeSpan.FromSeconds(10));
             await Service.StopAsync(CancellationToken.None);
+        }
+
+        public async Task RunWithoutStoppingAsync()
+        {
+            await Service.StartAsync(CancellationToken.None);
+            await _done.Task.WaitAsync(TimeSpan.FromSeconds(10));
         }
 
         private async Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
@@ -262,8 +303,12 @@ public class MonitoringServiceTests
 
     private sealed class FakeConfigStore(MonitoringConfiguration configuration, int version) : IMonitoringConfigurationStore
     {
+        public MonitoringConfiguration Configuration { get; set; } = configuration;
+
+        public int Version { get; set; } = version;
+
         public Task<StoredMonitoringConfiguration> LoadAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new StoredMonitoringConfiguration(configuration, version, null));
+            Task.FromResult(new StoredMonitoringConfiguration(Configuration, Version, null));
 
         public Task<int> SaveAsync(MonitoringConfiguration configuration, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

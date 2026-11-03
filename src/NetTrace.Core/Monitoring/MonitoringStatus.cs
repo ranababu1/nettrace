@@ -27,6 +27,13 @@ public sealed record MonitoringStatus(
     public static MonitoringStatus Initial { get; } = new(MonitoringState.Starting, null, null, null);
 }
 
+/// <summary>Lets the UI ask the engine to apply saved settings without restarting the application.</summary>
+public interface IMonitoringControl
+{
+    /// <summary>Re-reads the stored configuration; the engine restarts its loop (or pauses if disabled).</summary>
+    void ReloadConfiguration();
+}
+
 public interface IMonitoringStatusSource
 {
     MonitoringStatus Current { get; }

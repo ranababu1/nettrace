@@ -14,7 +14,7 @@ namespace NetTrace.Infrastructure.Monitoring;
 /// slots (stalls, sleep) become monitoring gaps of unknown cause, and disabled monitoring is an
 /// explicit gap. Runs independently of any window.
 /// </summary>
-public sealed class MonitoringService : BackgroundService, IMonitoringStatusSource
+public sealed class MonitoringService : BackgroundService, IMonitoringStatusSource, IMonitoringControl
 {
     /// <summary>Network context is re-read at least this often even without change events.</summary>
     public static readonly TimeSpan NetworkReconciliationInterval = TimeSpan.FromSeconds(60);
@@ -31,6 +31,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
     private readonly IClock _clock;
     private readonly ILogger<MonitoringService> _logger;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+    private CancellationTokenSource? _iteration;
     private int _networkChanged;
     private long _suspendedAtTicks;
     private MonitoringStatus _status = MonitoringStatus.Initial;
@@ -83,14 +84,31 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         await Task.Yield();
         try
         {
-            var stored = await _configurationStore.LoadAsync(stoppingToken).ConfigureAwait(false);
-            if (stored.Configuration.MonitoringEnabled)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await RunMonitoringLoopAsync(stored.Configuration, stored.Version, stoppingToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await WaitWhileDisabledAsync(stoppingToken).ConfigureAwait(false);
+                var stored = await _configurationStore.LoadAsync(stoppingToken).ConfigureAwait(false);
+                using var iteration = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                Volatile.Write(ref _iteration, iteration);
+                try
+                {
+                    if (stored.Configuration.MonitoringEnabled)
+                    {
+                        await RunMonitoringLoopAsync(stored.Configuration, stored.Version, iteration.Token).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await WaitWhileDisabledAsync(iteration.Token).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+                {
+                    // Settings changed: loop around and apply them.
+                    _logger.LogInformation("Applying changed monitoring settings.");
+                }
+                finally
+                {
+                    Volatile.Write(ref _iteration, null);
+                }
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -107,19 +125,32 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         Publish(Current with { State = MonitoringState.Stopped });
     }
 
+    public void ReloadConfiguration()
+    {
+        try
+        {
+            Volatile.Read(ref _iteration)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // The iteration already ended; the next one loads the new settings anyway.
+        }
+    }
+
     private async Task RunMonitoringLoopAsync(MonitoringConfiguration configuration, int version, CancellationToken stoppingToken)
     {
         var interval = TimeSpan.FromSeconds(configuration.IntervalSeconds);
         _networkProvider.NetworkChanged += OnNetworkChanged;
         _powerEvents.Suspending += OnSuspending;
         _powerEvents.Resumed += OnResumed;
+        IncidentTracker? tracker = null;
         try
         {
             var context = await _networkProvider.GetCurrentAsync(stoppingToken).ConfigureAwait(false);
             var contextRefreshedAt = _clock.UtcNow;
             NetworkContext? lastRecordedContext = null;
             var scheduledAt = _clock.UtcNow;
-            var tracker = new IncidentTracker(configuration);
+            tracker = new IncidentTracker(configuration);
             await CloseOrphanedIncidentsAsync(stoppingToken).ConfigureAwait(false);
 
             _logger.LogInformation(
@@ -166,6 +197,12 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
             _networkProvider.NetworkChanged -= OnNetworkChanged;
             _powerEvents.Suspending -= OnSuspending;
             _powerEvents.Resumed -= OnResumed;
+
+            // Stopping or restarting monitoring is a gap: an open incident ends at its last failing cycle.
+            if (tracker is not null)
+            {
+                await TrackIncidentsAsync(tracker, tracker.ObserveGap(_clock.UtcNow), CancellationToken.None).ConfigureAwait(false);
+            }
         }
     }
 
@@ -270,7 +307,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
                 GapSource),
             stoppingToken).ConfigureAwait(false);
         _logger.LogInformation("Monitoring is disabled in settings.");
-        Publish(Current with { State = MonitoringState.Disabled });
+        Publish(Current with { State = MonitoringState.Disabled, OpenIncident = null, IncidentSuspected = false });
 
         try
         {
