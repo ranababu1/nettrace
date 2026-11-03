@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Configuration;
 using NetTrace.Core.Monitoring;
@@ -9,6 +9,7 @@ using NetTrace.Infrastructure.Lifecycle;
 using NetTrace.Core.Probes;
 using NetTrace.Infrastructure.Logging;
 using NetTrace.Infrastructure.Monitoring;
+using NetTrace.Infrastructure.Power;
 using NetTrace.Infrastructure.Probes;
 using NetTrace.Infrastructure.Throughput;
 using NetTrace.Core.Throughput;
@@ -44,6 +45,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<SqliteLifecycleStore>();
         services.AddHostedService<ApplicationLifecycleService>();
 
+        services.AddSingleton<IPowerEvents, SystemPowerEvents>();
         services.AddSingleton<IIcmpProbe, PingProbe>();
         services.AddSingleton<MonitoringCycleRunner>();
         services.AddSingleton<MonitoringService>();

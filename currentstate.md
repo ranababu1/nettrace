@@ -70,7 +70,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-03: `dotnet test NetTrace.sln -c Release`, 164 passed, 0 failed, 0 skipped.
+2026-11-04: `dotnet test NetTrace.sln -c Release`, 165 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -79,9 +79,7 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Sleep/resume: subscribe to power events, record `SystemSleep` gaps, and refresh network
-   context on resume.
-2. Phase 2: DNS and HTTPS probes on their 30 s cadence.
-3. Phase 2: outage detection and classification (consecutive-failure thresholds,
+1. Phase 2: DNS and HTTPS probes on their 30 s cadence.
+2. Phase 2: outage detection and classification (consecutive-failure thresholds,
    corroboration, recovery, merge window) with deterministic tests.
-4. Use the latest observation to tighten the start of crash gaps.
+3. Use the latest observation to tighten the start of crash gaps.

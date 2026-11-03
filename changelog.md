@@ -6,6 +6,9 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- Sleep/resume handling: `IPowerEvents` with a `SystemEvents`-based implementation. Cycles missed
+  across an observed suspend are recorded as `SystemSleep` gaps, and the network context is
+  refreshed on resume.
 - `NetTrace.sln` with `NetTrace.App` (WPF, `net10.0-windows`), `NetTrace.Core` (`net10.0`),
   `NetTrace.Infrastructure` (`net10.0-windows`), `NetTrace.Reporting` (`net10.0`) and matching
   xUnit test projects. Project references follow the dependency direction in `docs/plan.md`.

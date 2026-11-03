@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Configuration;
@@ -25,10 +25,12 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
     private readonly MonitoringCycleRunner _runner;
     private readonly IObservationRepository _observations;
     private readonly IMonitoringGapRepository _gaps;
+    private readonly IPowerEvents _powerEvents;
     private readonly IClock _clock;
     private readonly ILogger<MonitoringService> _logger;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private int _networkChanged;
+    private long _suspendedAtTicks;
     private MonitoringStatus _status = MonitoringStatus.Initial;
 
     public MonitoringService(
@@ -37,9 +39,10 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         MonitoringCycleRunner runner,
         IObservationRepository observations,
         IMonitoringGapRepository gaps,
+        IPowerEvents powerEvents,
         IClock clock,
         ILogger<MonitoringService> logger)
-        : this(configurationStore, networkProvider, runner, observations, gaps, clock, logger, Task.Delay)
+        : this(configurationStore, networkProvider, runner, observations, gaps, powerEvents, clock, logger, Task.Delay)
     {
     }
 
@@ -49,6 +52,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         MonitoringCycleRunner runner,
         IObservationRepository observations,
         IMonitoringGapRepository gaps,
+        IPowerEvents powerEvents,
         IClock clock,
         ILogger<MonitoringService> logger,
         Func<TimeSpan, CancellationToken, Task> delay)
@@ -58,6 +62,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         _runner = runner;
         _observations = observations;
         _gaps = gaps;
+        _powerEvents = powerEvents;
         _clock = clock;
         _logger = logger;
         _delay = delay;
@@ -101,6 +106,8 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
     {
         var interval = TimeSpan.FromSeconds(configuration.IntervalSeconds);
         _networkProvider.NetworkChanged += OnNetworkChanged;
+        _powerEvents.Suspending += OnSuspending;
+        _powerEvents.Resumed += OnResumed;
         try
         {
             var context = await _networkProvider.GetCurrentAsync(stoppingToken).ConfigureAwait(false);
@@ -148,6 +155,8 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         finally
         {
             _networkProvider.NetworkChanged -= OnNetworkChanged;
+            _powerEvents.Suspending -= OnSuspending;
+            _powerEvents.Resumed -= OnResumed;
         }
     }
 
@@ -174,10 +183,13 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
 
     private async Task RecordMissedSlotsAsync(DateTimeOffset firstMissedSlot, CycleSlot slot, CancellationToken stoppingToken)
     {
-        var details = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{slot.SkippedSlots} scheduled monitoring cycles were missed. The system may have been asleep or unresponsive; network conditions during this period are unknown.");
         var gapEnd = _clock.UtcNow;
+        var suspendedAtTicks = Interlocked.Exchange(ref _suspendedAtTicks, 0);
+        var slept = suspendedAtTicks != 0 && new DateTimeOffset(suspendedAtTicks, TimeSpan.Zero) <= gapEnd;
+        var count = slot.SkippedSlots.ToString(CultureInfo.InvariantCulture);
+        var details = slept
+            ? $"{count} scheduled monitoring cycles were missed because the system was asleep; network conditions during this period are unknown."
+            : $"{count} scheduled monitoring cycles were missed. The system may have been asleep or unresponsive; network conditions during this period are unknown.";
         if (gapEnd <= firstMissedSlot)
         {
             return;
@@ -185,7 +197,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
 
         try
         {
-            await _gaps.AddAsync(new MonitoringGap(firstMissedSlot, gapEnd, MonitoringGapReason.Unknown, details, GapSource), stoppingToken)
+            await _gaps.AddAsync(new MonitoringGap(firstMissedSlot, gapEnd, slept ? MonitoringGapReason.SystemSleep : MonitoringGapReason.Unknown, details, GapSource), stoppingToken)
                 .ConfigureAwait(false);
             _logger.LogWarning("Recorded {SkippedSlots} missed monitoring cycles as a gap.", slot.SkippedSlots);
         }
@@ -218,6 +230,11 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
             await _gaps.CloseAsync(gapId, _clock.UtcNow, CancellationToken.None).ConfigureAwait(false);
         }
     }
+
+    private void OnSuspending(object? sender, EventArgs e) =>
+        Interlocked.Exchange(ref _suspendedAtTicks, _clock.UtcNow.UtcTicks);
+
+    private void OnResumed(object? sender, EventArgs e) => Interlocked.Exchange(ref _networkChanged, 1);
 
     private void OnNetworkChanged(object? sender, EventArgs e) => Interlocked.Exchange(ref _networkChanged, 1);
 

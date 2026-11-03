@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using NetTrace.Core.Configuration;
 using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
@@ -65,6 +65,26 @@ public class MonitoringServiceTests
     }
 
     [Fact]
+    public async Task MissedSlots_AfterObservedSuspend_AreRecordedAsSystemSleep_AndRefreshNetwork()
+    {
+        var harness = new Harness(cyclesBeforeStop: 2);
+        harness.BeforeFirstScheduleCheck = () =>
+        {
+            harness.Power.Suspend();
+            harness.Clock.UtcNow = harness.Clock.UtcNow.AddSeconds(32);
+            harness.Network.Gateway = "10.0.0.1";
+            harness.Power.Resume();
+        };
+
+        await harness.RunAsync();
+
+        var gap = Assert.Single(harness.Gaps.Gaps);
+        Assert.Equal(MonitoringGapReason.SystemSleep, gap.Reason);
+        Assert.Contains("asleep", gap.Details, StringComparison.Ordinal);
+        Assert.Equal("10.0.0.1", harness.Observations.Saved[^1].Cycle.NetworkContext.DefaultGateway);
+    }
+
+    [Fact]
     public async Task Disabled_RecordsOpenGapClosedOnStop_AndProbesNothing()
     {
         var harness = new Harness(cyclesBeforeStop: 1, new MonitoringConfiguration { MonitoringEnabled = false });
@@ -123,6 +143,7 @@ public class MonitoringServiceTests
                 new MonitoringCycleRunner(Probe, Clock),
                 Observations,
                 Gaps,
+                Power,
                 Clock,
                 NullLogger<MonitoringService>.Instance,
                 DelayAsync);
@@ -145,6 +166,8 @@ public class MonitoringServiceTests
         public FakeObservations Observations { get; } = new();
 
         public FakeGaps Gaps { get; } = new();
+
+        public FakePower Power { get; } = new();
 
         public MonitoringService Service { get; }
 
@@ -176,6 +199,17 @@ public class MonitoringServiceTests
                 await Task.Delay(Timeout.Infinite, cancellationToken);
             }
         }
+    }
+
+    private sealed class FakePower : IPowerEvents
+    {
+        public event EventHandler? Suspending;
+
+        public event EventHandler? Resumed;
+
+        public void Suspend() => Suspending?.Invoke(this, EventArgs.Empty);
+
+        public void Resume() => Resumed?.Invoke(this, EventArgs.Empty);
     }
 
     private sealed class FakeConfigStore(MonitoringConfiguration configuration, int version) : IMonitoringConfigurationStore
