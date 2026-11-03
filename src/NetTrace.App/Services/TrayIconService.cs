@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
@@ -192,9 +192,9 @@ public sealed class TrayIconService : IDisposable
         using (var graphics = Graphics.FromImage(bitmap))
         {
             graphics.Clear(Color.Transparent);
-            // ClearType cannot blend onto a transparent background; grayscale antialiasing can.
-            graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            using var brush = new SolidBrush(IsTaskbarLight() ? Color.Black : Color.White);
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var color = IsTaskbarLight() ? Color.Black : Color.White;
+            using var brush = new SolidBrush(color);
             using var format = new StringFormat(StringFormat.GenericTypographic)
             {
                 Alignment = StringAlignment.Center,
@@ -202,24 +202,25 @@ public sealed class TrayIconService : IDisposable
                 FormatFlags = StringFormatFlags.NoWrap,
             };
 
-            // Largest bold font whose text fits the icon width.
-            var emSize = size * 0.75f;
-            Font font;
+            // Largest bold font whose text fits the icon width, drawn as a path with a same-colour
+            // outline so the strokes are heavier than plain text at this tiny size.
+            var emSize = size * 0.8f;
+            var stroke = Math.Max(0.6f, size / 24f);
             while (true)
             {
-                font = new Font("Segoe UI", emSize, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
-                if (graphics.MeasureString(text, font, int.MaxValue, format).Width <= size || emSize <= 6)
+                using var path = new System.Drawing.Drawing2D.GraphicsPath();
+                path.AddString(text, new FontFamily("Segoe UI"), (int)System.Drawing.FontStyle.Bold, emSize,
+                    new RectangleF(0, 0, size, size), format);
+                var bounds = path.GetBounds();
+                if (bounds.Width + stroke <= size || emSize <= 6)
                 {
+                    using var pen = new Pen(color, stroke) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round };
+                    graphics.FillPath(brush, path);
+                    graphics.DrawPath(pen, path);
                     break;
                 }
 
-                font.Dispose();
                 emSize -= 0.5f;
-            }
-
-            using (font)
-            {
-                graphics.DrawString(text, font, brush, new RectangleF(0, 0, size, size), format);
             }
         }
 
