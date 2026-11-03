@@ -70,7 +70,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-04: `dotnet test NetTrace.sln -c Release`, 175 passed, 0 failed, 0 skipped.
+2026-11-04: `dotnet test NetTrace.sln -c Release`, 197 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -79,6 +79,6 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Phase 2: outage detection and classification (consecutive-failure thresholds,
-   corroboration, recovery, merge window) with deterministic tests.
+1. Wire `IncidentTracker` into `MonitoringService`: persist incidents (new migration and
+   repository), feed gaps via `ObserveGap`, expose current incident status to the UI.
 2. Use the latest observation to tighten the start of crash gaps.

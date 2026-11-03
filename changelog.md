@@ -6,6 +6,10 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- Outage detection engine in Core (`Incidents`): a per-cycle classifier (local interface,
+  gateway, external connectivity, DNS, HTTPS) that needs independent probes to agree, and an
+  `IncidentTracker` with a confirmation threshold, recovery threshold, merge window and gap
+  handling. Not yet wired into the monitoring service or the database.
 - DNS probe (system resolver) and HTTPS probe (GET, time to response headers, no redirects) on
   their own 30 s cadence. They run beside the main cycle without delaying it, and each result is
   stored by the first cycle that sees it finish, so slow timeouts cannot cause false missed-cycle gaps.
