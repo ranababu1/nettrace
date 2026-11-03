@@ -1,4 +1,4 @@
-using NetTrace.Core.Configuration;
+﻿using NetTrace.Core.Configuration;
 using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
 using NetTrace.Core.Probes;
@@ -71,6 +71,59 @@ public class MonitoringCycleTests
     }
 
     [Fact]
+    public async Task Run_SlowProbes_RunOnFirstCycleThenOnlyWhenTheirIntervalElapses()
+    {
+        var dns = new FakeDnsProbe();
+        var https = new FakeHttpsProbe();
+        var runner = new MonitoringCycleRunner(new FakeIcmpProbe(), new FixedClock(T0), dns, https);
+        var config = new MonitoringConfiguration();
+        var context = Context("192.168.1.1");
+
+        var first = await runner.RunAsync(config, 1, context, T0, CancellationToken.None);
+        var second = await runner.RunAsync(config, 1, context, T0.AddSeconds(25), CancellationToken.None);
+        var third = await runner.RunAsync(config, 1, context, T0.AddSeconds(30), CancellationToken.None);
+
+        Assert.Equal(1, first.Results.Count(r => r.ProbeType == ProbeType.Dns));
+        Assert.Equal(2, first.Results.Count(r => r.ProbeType == ProbeType.Https));
+        Assert.DoesNotContain(second.Results, r => r.ProbeType is ProbeType.Dns or ProbeType.Https);
+        Assert.Equal(1, third.Results.Count(r => r.ProbeType == ProbeType.Dns));
+        Assert.Equal(2, third.Results.Count(r => r.ProbeType == ProbeType.Https));
+        Assert.Equal(2, dns.Calls);
+    }
+
+    [Fact]
+    public async Task Run_SlowProbeStillRunning_DoesNotDelayCycle_AndIsReportedWhenFinished()
+    {
+        var gate = new TaskCompletionSource();
+        var dns = new FakeDnsProbe { Gate = gate.Task };
+        var runner = new MonitoringCycleRunner(new FakeIcmpProbe(), new FixedClock(T0), dns);
+        var config = new MonitoringConfiguration();
+        var context = Context("192.168.1.1");
+
+        var first = await runner.RunAsync(config, 1, context, T0, CancellationToken.None);
+        gate.SetResult();
+        await Task.Delay(100);
+        var second = await runner.RunAsync(config, 1, context, T0.AddSeconds(5), CancellationToken.None);
+
+        Assert.DoesNotContain(first.Results, r => r.ProbeType == ProbeType.Dns);
+        Assert.Single(second.Results, r => r.ProbeType == ProbeType.Dns);
+        Assert.Equal(1, dns.Calls);
+    }
+
+    [Fact]
+    public async Task Run_SlowProbeThrowing_IsRecordedAsErrorWithItsOwnMethod()
+    {
+        var runner = new MonitoringCycleRunner(new FakeIcmpProbe(), new FixedClock(T0), new FakeDnsProbe { Throw = true });
+
+        var cycle = await runner.RunAsync(new MonitoringConfiguration(), 1, Context("192.168.1.1"), T0, CancellationToken.None);
+
+        var dns = Assert.Single(cycle.Results, r => r.ProbeType == ProbeType.Dns);
+        Assert.Equal(ProbeOutcome.Error, dns.Outcome);
+        Assert.Equal("System resolver", dns.Method);
+        Assert.Equal(3, cycle.Results.Count(r => r.Succeeded));
+    }
+
+    [Fact]
     public void Schedule_OnTime_AdvancesOneInterval()
     {
         Assert.Equal(new CycleSlot(T0 + Five, 0, false), CycleSchedule.Next(T0, T0.AddSeconds(1.2), Five));
@@ -113,6 +166,37 @@ public class MonitoringCycleTests
             ? null
             : new("id", "Wi-Fi", "Test adapter", InterfaceKind.Wifi, InterfaceStatus.Up, 12, ["192.168.1.20"], [], [gateway], [gateway]);
         return new NetworkContext(T0, nic is null ? [] : [nic], nic, gateway);
+    }
+
+    private sealed class FakeDnsProbe : IDnsProbe
+    {
+        public int Calls { get; private set; }
+
+        public bool Throw { get; init; }
+
+        public Task? Gate { get; init; }
+
+        public async Task<ProbeResult> ResolveAsync(string hostname, int timeoutMilliseconds, CancellationToken cancellationToken)
+        {
+            if (Gate is not null)
+            {
+                await Gate;
+            }
+
+            Calls++;
+            if (Throw)
+            {
+                throw new InvalidOperationException("boom");
+            }
+
+            return new ProbeResult(ProbeType.Dns, hostname, "System resolver", T0, T0, ProbeOutcome.Success, 10, timeoutMilliseconds, null, null);
+        }
+    }
+
+    private sealed class FakeHttpsProbe : IHttpsProbe
+    {
+        public Task<ProbeResult> GetAsync(string endpoint, int timeoutMilliseconds, CancellationToken cancellationToken) =>
+            Task.FromResult(new ProbeResult(ProbeType.Https, endpoint, "HTTPS GET", T0, T0, ProbeOutcome.Success, 50, timeoutMilliseconds, null, null));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : IClock

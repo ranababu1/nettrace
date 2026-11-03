@@ -6,6 +6,9 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- DNS probe (system resolver) and HTTPS probe (GET, time to response headers, no redirects) on
+  their own 30 s cadence. They run beside the main cycle without delaying it, and each result is
+  stored by the first cycle that sees it finish, so slow timeouts cannot cause false missed-cycle gaps.
 - Sleep/resume handling: `IPowerEvents` with a `SystemEvents`-based implementation. Cycles missed
   across an observed suspend are recorded as `SystemSleep` gaps, and the network context is
   refreshed on resume.

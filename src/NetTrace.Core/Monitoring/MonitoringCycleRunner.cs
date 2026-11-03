@@ -1,4 +1,4 @@
-using NetTrace.Core.Configuration;
+﻿using NetTrace.Core.Configuration;
 using NetTrace.Core.Network;
 using NetTrace.Core.Probes;
 using NetTrace.Core.Time;
@@ -20,8 +20,13 @@ public sealed record MonitoringCycle(
 /// target, concurrently. Concurrency is bounded by the validated target count, and every probe
 /// carries its own timeout, which validation keeps shorter than the cycle interval.
 /// </summary>
-public sealed class MonitoringCycleRunner(IIcmpProbe icmpProbe, IClock clock)
+public sealed class MonitoringCycleRunner(
+    IIcmpProbe icmpProbe, IClock clock, IDnsProbe? dnsProbe = null, IHttpsProbe? httpsProbe = null)
 {
+    private DateTimeOffset? _lastDnsAt;
+    private DateTimeOffset? _lastHttpsAt;
+    private readonly List<Task<ProbeResult>> _pendingSlowProbes = [];
+
     public const string IcmpMethod = "ICMP echo";
     public const string NoTarget = "(none)";
 
@@ -60,7 +65,36 @@ public sealed class MonitoringCycleRunner(IIcmpProbe icmpProbe, IClock clock)
             probes.Add(PingSafelyAsync(ProbeType.ExternalIcmp, target, configuration.ExternalTimeoutMilliseconds, cancellationToken));
         }
 
-        var results = await Task.WhenAll(probes).ConfigureAwait(false);
+        if (dnsProbe is not null && IsDue(ref _lastDnsAt, scheduledAtUtc, configuration.DnsIntervalSeconds))
+        {
+            _pendingSlowProbes.Add(RunSafelyAsync(
+                ProbeType.Dns, configuration.DnsTestHostname, "System resolver", configuration.DnsTimeoutMilliseconds,
+                ct => dnsProbe.ResolveAsync(configuration.DnsTestHostname, configuration.DnsTimeoutMilliseconds, ct),
+                cancellationToken));
+        }
+
+        if (httpsProbe is not null && IsDue(ref _lastHttpsAt, scheduledAtUtc, configuration.HttpsIntervalSeconds))
+        {
+            foreach (var endpoint in configuration.HttpsEndpoints)
+            {
+                _pendingSlowProbes.Add(RunSafelyAsync(
+                    ProbeType.Https, endpoint, "HTTPS GET", configuration.HttpsTimeoutMilliseconds,
+                    ct => httpsProbe.GetAsync(endpoint, configuration.HttpsTimeoutMilliseconds, ct),
+                    cancellationToken));
+            }
+        }
+
+        var fastResults = await Task.WhenAll(probes).ConfigureAwait(false);
+
+        // Slow probes can outlast the cycle (their timeouts may exceed it), so they never delay it:
+        // each is reported by the first cycle that finds it finished.
+        var results = new List<ProbeResult>(fastResults);
+        foreach (var finished in _pendingSlowProbes.Where(t => t.IsCompleted).ToList())
+        {
+            _pendingSlowProbes.Remove(finished);
+            results.Add(await finished.ConfigureAwait(false));
+        }
+
         return new MonitoringCycle(
             Guid.NewGuid(),
             scheduledAtUtc,
@@ -71,13 +105,32 @@ public sealed class MonitoringCycleRunner(IIcmpProbe icmpProbe, IClock clock)
             results);
     }
 
-    private async Task<ProbeResult> PingSafelyAsync(
-        ProbeType probeType, string target, int timeoutMilliseconds, CancellationToken cancellationToken)
+    /// <summary>A slow probe runs on the first cycle and whenever its interval has elapsed since it last ran.</summary>
+    private static bool IsDue(ref DateTimeOffset? last, DateTimeOffset scheduledAtUtc, int intervalSeconds)
+    {
+        if (last is { } previous && scheduledAtUtc >= previous && scheduledAtUtc - previous < TimeSpan.FromSeconds(intervalSeconds))
+        {
+            return false;
+        }
+
+        last = scheduledAtUtc;
+        return true;
+    }
+
+    private Task<ProbeResult> PingSafelyAsync(
+        ProbeType probeType, string target, int timeoutMilliseconds, CancellationToken cancellationToken) =>
+        RunSafelyAsync(
+            probeType, target, IcmpMethod, timeoutMilliseconds,
+            ct => icmpProbe.PingAsync(probeType, target, timeoutMilliseconds, ct), cancellationToken);
+
+    private async Task<ProbeResult> RunSafelyAsync(
+        ProbeType probeType, string target, string method, int timeoutMilliseconds,
+        Func<CancellationToken, Task<ProbeResult>> probe, CancellationToken cancellationToken)
     {
         var startedAt = clock.UtcNow;
         try
         {
-            return await icmpProbe.PingAsync(probeType, target, timeoutMilliseconds, cancellationToken).ConfigureAwait(false);
+            return await probe(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -86,7 +139,7 @@ public sealed class MonitoringCycleRunner(IIcmpProbe icmpProbe, IClock clock)
             return new ProbeResult(
                 probeType,
                 target,
-                IcmpMethod,
+                method,
                 startedAt,
                 clock.UtcNow,
                 ProbeOutcome.Error,

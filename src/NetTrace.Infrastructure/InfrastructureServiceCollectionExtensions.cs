@@ -47,6 +47,8 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton<IPowerEvents, SystemPowerEvents>();
         services.AddSingleton<IIcmpProbe, PingProbe>();
+        services.AddSingleton<IDnsProbe, DnsProbe>();
+        services.AddSingleton<IHttpsProbe, HttpsProbe>();
         services.AddSingleton<MonitoringCycleRunner>();
         services.AddSingleton<MonitoringService>();
         services.AddSingleton<IMonitoringStatusSource>(sp => sp.GetRequiredService<MonitoringService>());
