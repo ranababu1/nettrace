@@ -107,7 +107,7 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Tests/validation
 
-- 160 tests pass (rate formatting, throughput calculation and selection, sampler; `dotnet test NetTrace.sln -c Release`), including ping status mapping and
+- 164 tests pass (rate formatting, throughput calculation and selection, sampler; `dotnet test NetTrace.sln -c Release`), including ping status mapping and
   loopback ping, cycle runner (skip, error isolation, cancellation), schedule (overrun, stall,
   clock reset), repository round-trips of every outcome, and the monitoring service loop
   (schedule, snapshots on change, missed-slot gaps, disabled gap, save failure), plus active-interface selection,
