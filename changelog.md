@@ -49,6 +49,13 @@ All notable changes to NetTrace. Newest entries first.
   last heartbeat. Neither is ever treated as an outage. If the clock moved backwards, a
   `ClockDiscontinuityDetected` event is recorded instead of a gap.
 
+- Network interface discovery (`INetworkInterfaceProvider`): adapters with kind, status,
+  IPv4/IPv6 addresses, gateways and DNS servers. The active interface is the one Windows
+  routes internet traffic through (`GetBestInterface`, which reads the routing table and sends
+  no traffic). If that interface isn't eligible, the fallback order is Ethernet, Wi-Fi,
+  cellular. Loopback, tunnel, down and gateway-less adapters are never active. Windows
+  address/availability changes raise `NetworkChanged`.
+
 ### Changed
 
 - README rewritten as a user-facing product description.
@@ -60,7 +67,8 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Tests/validation
 
-- 82 tests pass (`dotnet test NetTrace.sln -c Release`), including configuration validation,
+- 101 tests pass (`dotnet test NetTrace.sln -c Release`), including active-interface selection,
+  adapter type/status mapping, a live local discovery check (no internet needed), configuration validation,
   settings round-trip and fallback, lifecycle reconciliation rules, and lifecycle integration
   (clean stop, crash, unreadable session). Earlier coverage: Core dependency rule, data-path
   layout and validation, logger output/levels/rollover/disposal, SHA-256 known vector and

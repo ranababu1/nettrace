@@ -4,8 +4,8 @@
 
 The initial scaffold (instructions.md section 18) is complete. Phase 1 (Foundation) of
 `docs/plan.md` is in progress: DI, logging, the SQLite schema/migrations, settings and
-application lifecycle/gap tracking are done. Network discovery, probes and the monitoring
-scheduler are not.
+application lifecycle/gap tracking and network interface discovery are done. Probes, the
+monitoring scheduler and observation persistence are not.
 
 ## 2. Current version
 
@@ -28,6 +28,8 @@ scheduler are not.
   in `AppSettings`.
 - Lifecycle tracking: start/stop events, 30 s heartbeat, and startup reconciliation into
   `ApplicationNotRunning` / `UnexpectedTermination` monitoring gaps.
+- Network interface and default-gateway discovery with change notifications (not yet
+  shown in the UI or persisted to `NetworkSnapshots`).
 - SHA-256 checksum compute/verify for exports.
 - Shell window showing the *Unmonitored* state, the version and the data folder.
 
@@ -56,7 +58,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-03: `dotnet test NetTrace.sln -c Release`, 82 passed, 0 failed, 0 skipped.
+2026-11-03: `dotnet test NetTrace.sln -c Release`, 101 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -65,10 +67,11 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Network interface and default gateway discovery (`INetworkInterfaceProvider`) with fakes,
-   refreshed on network-change events plus periodic reconciliation.
-2. Gateway and external ICMP probes with timeouts, plus a non-overlapping scheduler.
-3. Observation repository with batched writes.
+1. Gateway and external ICMP probes with timeouts (`INetworkProbe`), plus a
+   non-overlapping scheduler that refreshes network context on `NetworkChanged` and
+   periodically.
+2. Observation and network-snapshot repositories with batched writes.
+3. Show the active connection, gateway and monitoring state on the dashboard.
 4. Sleep/resume handling: record `SystemSleep` gaps and refresh network context on resume.
 5. Known limitation to revisit: the gap after a crash starts at the last heartbeat (at most
    30 s before the crash). Once observations exist, use the latest observation if it is newer.

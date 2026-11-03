@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Configuration;
+using NetTrace.Core.Network;
 using NetTrace.Core.Time;
 using NetTrace.Infrastructure.Configuration;
 using NetTrace.Infrastructure.Lifecycle;
 using NetTrace.Infrastructure.Logging;
+using NetTrace.Infrastructure.Network;
 using NetTrace.Infrastructure.Persistence;
 using NetTrace.Infrastructure.Persistence.Migrations;
 using NetTrace.Infrastructure.Storage;
@@ -26,6 +28,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddHostedService<DatabaseInitializer>();
         services.AddSingleton<ISettingsRepository, SqliteSettingsRepository>();
         services.AddSingleton<IMonitoringConfigurationStore, MonitoringConfigurationStore>();
+
+        services.AddSingleton<INetworkInterfaceProvider, SystemNetworkInterfaceProvider>();
 
         // Hosted services start in registration order: the schema must exist before lifecycle records.
         services.AddSingleton<SqliteLifecycleStore>();
