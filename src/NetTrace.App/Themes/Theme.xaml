@@ -1,30 +1,42 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Built-in WPF Fluent theme: Windows 11 styling that follows the system light/dark setting. -->
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
-    </ResourceDictionary.MergedDictionaries>
+    <!-- Base styling comes from Application.ThemeMode="System" (WPF Fluent, follows light/dark).
+         Brush keys below are Fluent theme resources, referenced dynamically so they track theme changes. -->
 
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
     <Style x:Key="CardBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="8" />
-        <Setter Property="Padding" Value="20,16" />
+        <Setter Property="Padding" Value="20,18" />
         <Setter Property="Margin" Value="0,0,0,12" />
     </Style>
 
-    <Style x:Key="PageTitleTextStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="28" />
+    <Style x:Key="TileBorderStyle" TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="Margin" Value="0,0,12,12" />
+        <Setter Property="Width" Value="176" />
+    </Style>
+
+    <Style x:Key="AppTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="HeroTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="24" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="SectionTitleTextStyle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Margin" Value="2,8,0,8" />
     </Style>
 
     <Style x:Key="CaptionTextStyle" TargetType="TextBlock">
@@ -32,9 +44,26 @@
         <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
     </Style>
 
-    <Style x:Key="FieldLabelTextStyle" TargetType="TextBlock">
+    <Style x:Key="TileValueTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="28" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="TileUnitTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Margin" Value="4,0,0,5" />
+        <Setter Property="VerticalAlignment" Value="Bottom" />
         <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="ChipBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="10,4" />
+    </Style>
+
+    <Style x:Key="FieldLabelTextStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
         <Setter Property="Margin" Value="0,0,16,6" />
-        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 </ResourceDictionary>

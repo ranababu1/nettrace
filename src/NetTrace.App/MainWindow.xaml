@@ -8,67 +8,121 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="{Binding Title}"
-        Width="760" Height="720" MinWidth="480" MinHeight="360"
+        Icon="pack://application:,,,/Assets/NetTrace.ico"
+        Width="820" Height="760" MinWidth="520" MinHeight="420"
         WindowStartupLocation="CenterScreen">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,24" MaxWidth="900">
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                <TextBlock Text="{Binding Title}" Style="{StaticResource PageTitleTextStyle}" />
-                <TextBlock Text="{Binding ApplicationVersion, StringFormat=v{0}}"
-                           Style="{StaticResource CaptionTextStyle}"
-                           Margin="12,0,0,5" VerticalAlignment="Bottom" />
-            </StackPanel>
+        <StackPanel Margin="28,20,28,24" MaxWidth="920">
 
-            <Border Style="{StaticResource CardBorderStyle}">
+            <!-- Header -->
+            <DockPanel Margin="0,0,0,18" LastChildFill="False">
+                <Image DockPanel.Dock="Left" Source="pack://application:,,,/Assets/NetTrace.png" Width="28" Height="28"
+                       RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,10,0" AutomationProperties.Name="NetTrace logo" />
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" Style="{StaticResource AppTitleTextStyle}" />
+                <Border DockPanel.Dock="Left" Style="{StaticResource ChipBorderStyle}" Margin="10,0,0,0" VerticalAlignment="Center" Padding="8,2">
+                    <TextBlock Text="{Binding ApplicationVersion}" Style="{StaticResource CaptionTextStyle}" />
+                </Border>
+            </DockPanel>
+
+            <!-- Hero status -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="24,22">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <!-- Glyph plus text label: state is never conveyed by colour alone. -->
-                    <TextBlock Grid.Column="0" Text="{Binding MonitoringStateGlyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                               FontSize="28" Margin="0,2,16,0" VerticalAlignment="Top"
-                               AutomationProperties.Name="Monitoring state icon" />
+                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="26" VerticalAlignment="Top" Margin="0,0,18,0"
+                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                        <TextBlock Text="{Binding MonitoringStateGlyph}" FontFamily="{StaticResource IconFont}" FontSize="24"
+                                   Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   AutomationProperties.Name="Monitoring state icon" />
+                    </Border>
                     <StackPanel Grid.Column="1">
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,4">
-                            <Run Text="Monitoring state:" />
-                            <Run Text="{Binding MonitoringState, Mode=OneWay}" />
-                        </TextBlock>
-                        <TextBlock Text="{Binding MonitoringStateDescription}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding LastError}" TextWrapping="Wrap" Margin="0,8,0,0" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding MonitoringState}" Style="{StaticResource HeroTitleTextStyle}" />
+                        <TextBlock Text="{Binding MonitoringStateDescription}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                   Style="{StaticResource CaptionTextStyle}" FontSize="13" />
+                        <WrapPanel>
+                            <Border Style="{StaticResource ChipBorderStyle}" Margin="0,0,8,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding ConnectionGlyph}" FontFamily="{StaticResource IconFont}" Margin="0,1,8,0" />
+                                    <TextBlock Text="{Binding ConnectionText}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource ChipBorderStyle}" Margin="0,0,8,6"
+                                    ToolTip="The most recent time any check received a reply.">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE823;" FontFamily="{StaticResource IconFont}" Margin="0,1,8,0" />
+                                    <TextBlock Text="{Binding LastSuccessText, StringFormat=Last reply {0}}" />
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding LastError}" TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold"
                                    Visibility="{Binding HasLastError, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <Border Style="{StaticResource CardBorderStyle}">
-                <StackPanel>
-                    <TextBlock Text="Connection" Style="{StaticResource SectionTitleTextStyle}" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Active connection" Style="{StaticResource FieldLabelTextStyle}" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConnectionText}" TextWrapping="Wrap" Margin="0,0,0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Default gateway" Style="{StaticResource FieldLabelTextStyle}" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding GatewayText}" Margin="0,0,0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Last successful check" Style="{StaticResource FieldLabelTextStyle}"
-                                   ToolTip="The most recent time any check received a reply." />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LastSuccessText}" />
-                    </Grid>
-                </StackPanel>
-            </Border>
+            <!-- Live tiles -->
+            <WrapPanel Margin="0,0,-12,0">
+                <Border Style="{StaticResource TileBorderStyle}"
+                        ToolTip="Data your PC is receiving right now, read from Windows adapter counters. This is usage, not your plan's available speed; low values while idle are normal.">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE896;" FontFamily="{StaticResource IconFont}" Margin="0,1,6,0" />
+                            <TextBlock Text="Download" Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding DownloadValue}" Style="{StaticResource TileValueTextStyle}" />
+                            <TextBlock Text="{Binding DownloadUnit}" Style="{StaticResource TileUnitTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ThroughputCaption}" Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource TileBorderStyle}"
+                        ToolTip="Data your PC is sending right now, read from Windows adapter counters.">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE898;" FontFamily="{StaticResource IconFont}" Margin="0,1,6,0" />
+                            <TextBlock Text="Upload" Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <TextBlock Text="{Binding UploadValue}" Style="{StaticResource TileValueTextStyle}" />
+                            <TextBlock Text="{Binding UploadUnit}" Style="{StaticResource TileUnitTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ThroughputCaption}" Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource TileBorderStyle}"
+                        ToolTip="Round-trip time of an ICMP echo to your router (default gateway). Windows reports whole milliseconds.">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE968;" FontFamily="{StaticResource IconFont}" Margin="0,1,6,0" />
+                            <TextBlock Text="Router" Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding RouterLatency}" Style="{StaticResource TileValueTextStyle}" Margin="0,6,0,2" />
+                        <TextBlock Text="{Binding RouterCaption}" Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource TileBorderStyle}"
+                        ToolTip="Average round-trip time of ICMP echoes to the external targets that replied in the latest check.">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE774;" FontFamily="{StaticResource IconFont}" Margin="0,1,6,0" />
+                            <TextBlock Text="Internet" Style="{StaticResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding InternetLatency}" Style="{StaticResource TileValueTextStyle}" Margin="0,6,0,2" />
+                        <TextBlock Text="{Binding InternetCaption}" Style="{StaticResource CaptionTextStyle}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
 
-            <Border Style="{StaticResource CardBorderStyle}">
+            <!-- Latest measurements -->
+            <TextBlock Text="Latest checks" Style="{StaticResource SectionTitleTextStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}" Padding="0">
                 <StackPanel>
-                    <TextBlock Text="Latest measurements" Style="{StaticResource SectionTitleTextStyle}" />
-                    <TextBlock Text="No measurements yet." Style="{StaticResource CaptionTextStyle}">
+                    <TextBlock Text="No measurements yet." Style="{StaticResource CaptionTextStyle}" Margin="20,16">
                         <TextBlock.Visibility>
                             <Binding Path="LatestMeasurements.Count">
                                 <Binding.Converter>
@@ -77,54 +131,64 @@
                             </Binding>
                         </TextBlock.Visibility>
                     </TextBlock>
-                    <ItemsControl ItemsSource="{Binding LatestMeasurements}" AutomationProperties.Name="Latest measurements">
+                    <ItemsControl ItemsSource="{Binding LatestMeasurements}" AutomationProperties.Name="Latest checks">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:ProbeRowViewModel}">
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="160" />
-                                        <ColumnDefinition Width="130" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                               Margin="0,2,10,0" AutomationProperties.Name="Result icon" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Check}" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Target}" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="3" Text="{Binding Result}" TextWrapping="Wrap"
-                                               ToolTip="{Binding MeasuredAt, StringFormat=Measured at {0}}" />
-                                </Grid>
+                                <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="110" />
+                                            <ColumnDefinition Width="140" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}"
+                                                   Margin="0,2,14,0" AutomationProperties.Name="Result icon" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Check}" FontWeight="SemiBold" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Target}" Style="{StaticResource CaptionTextStyle}" VerticalAlignment="Center"
+                                                   FontFamily="Cascadia Mono, Consolas" />
+                                        <TextBlock Grid.Column="3" Text="{Binding Result}" TextWrapping="Wrap"
+                                                   ToolTip="{Binding MeasuredAt, StringFormat=Measured at {0}}" />
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorderStyle}">
-                <StackPanel>
-                    <TextBlock Text="Application" Style="{StaticResource SectionTitleTextStyle}" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Started" Style="{StaticResource FieldLabelTextStyle}" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding StartedAtText}" TextWrapping="Wrap" Margin="0,0,0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Data folder" Style="{StaticResource FieldLabelTextStyle}" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DataDirectory, Mode=OneWay}" IsReadOnly="True"
-                                 TextWrapping="Wrap" AutomationProperties.Name="Data folder path"
-                                 ToolTip="Local database, logs and exports are stored here. Nothing is sent to the cloud." />
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                        <Button Content="Open data folder" Command="{Binding OpenDataFolderCommand}" Margin="0,0,8,0" />
-                        <Button Content="Exit" Command="{Binding ExitCommand}" />
-                    </StackPanel>
+            <!-- Footer -->
+            <Grid Margin="2,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap">
+                        <Run Text="Started" />
+                        <Run Text="{Binding StartedAtText, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap" Margin="0,2,0,0"
+                               ToolTip="Local database, logs and exports are stored here. Nothing is sent to the cloud.">
+                        <Run Text="Data stored locally in" />
+                        <Run Text="{Binding DataDirectory, Mode=OneWay}" />
+                    </TextBlock>
                 </StackPanel>
-            </Border>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenDataFolderCommand}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" Margin="0,1,8,0" />
+                            <TextBlock Text="Open data folder" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExitCommand}" ToolTip="Stop monitoring and close NetTrace. Closing the window keeps it running in the tray.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7E8;" FontFamily="{StaticResource IconFont}" Margin="0,1,8,0" />
+                            <TextBlock Text="Exit" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
         </StackPanel>
     </ScrollViewer>
 </Window>

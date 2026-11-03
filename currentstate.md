@@ -31,9 +31,11 @@ incident detection (Phase 2) and the dashboard/tray UI (Phase 3) are not started
   monitoring is a `MonitoringDisabled` gap. Observations and network snapshots (on change)
   are persisted.
 - SHA-256 checksum compute/verify for exports.
-- Main window shows live monitoring state (with glyph and text), active connection, default
-  gateway, last successful check, and the latest result for each check, updated after every
-  cycle. It shows no health verdict yet (classification is Phase 2).
+- Fluent (Windows 11, light/dark) main window: status card, live Download/Upload/Router/
+  Internet tiles, latest checks. No health verdict yet (classification is Phase 2).
+- System tray with app icon, live download rate in the icon, both rates plus connection
+  and state in the tooltip, and an Open/Exit menu. Closing the window hides to the tray.
+- Live throughput from OS adapter counters (Automatic connection; display-only).
 
 ## 5. In-progress work
 
@@ -41,8 +43,14 @@ None.
 
 ## 6. Known issues and limitations
 
-- No tray, startup registration, DNS/HTTPS probes, incident classification, history,
-  settings UI or export yet. Closing the window exits the app.
+- No startup registration, DNS/HTTPS probes, incident classification, history, settings UI
+  or export yet. The tray menu therefore has no Start/Stop, Export today or Settings items.
+- Throughput settings (enable, specific adapter, bits/bytes, icon text, label, interval) use
+  defaults until the settings UI exists; the logic is implemented and tested.
+- Windows 11 places new tray icons in the hidden overflow. Users must pin NetTrace via
+  Settings > Personalization > Taskbar > Other system tray icons. (On the developer machine it
+  was promoted via `HKCU\Control Panel\NotifyIconSettings\<id>\IsPromoted = 1`.)
+- The tray icon is 16 px at 100% scaling, so 4-character rates such as `310k` render small.
 - Configuration changes take effect only after a restart (no settings UI yet).
 - Windows ICMP reports round-trip time in whole milliseconds. Sub-millisecond replies (typical
   for a wired gateway) are stored as `0` ms: a real measurement, not a missing value.
@@ -62,7 +70,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-03: `dotnet test NetTrace.sln -c Release`, 131 passed, 0 failed, 0 skipped.
+2026-11-03: `dotnet test NetTrace.sln -c Release`, 160 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
