@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using NetTrace.Core.Configuration;
 using NetTrace.Core.Time;
 
@@ -60,21 +61,33 @@ public sealed class SqliteSettingsRepository(SqliteConnectionFactory connectionF
                 var updatedAt = SqliteTimestamp.ToText(clock.UtcNow);
                 foreach (var (key, value) in values)
                 {
-                    await using var command = connection.CreateCommand();
-                    command.Transaction = transaction;
-                    command.CommandText = """
-                        INSERT INTO AppSettings (Key, Value, UpdatedAtUtc) VALUES ($key, $value, $updatedAt)
-                        ON CONFLICT (Key) DO UPDATE SET Value = excluded.Value, UpdatedAtUtc = excluded.UpdatedAtUtc;
-                        """;
-                    command.Parameters.AddWithValue("$key", key);
-                    command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
-                    command.Parameters.AddWithValue("$updatedAt", updatedAt);
-                    await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+                    await UpsertAsync(connection, transaction, key, value, updatedAt, ct).ConfigureAwait(false);
                 }
 
                 await transaction.CommitAsync(ct).ConfigureAwait(false);
                 return true;
             },
             cancellationToken);
+    }
+
+    /// <summary>Upserts one setting inside a caller-owned transaction.</summary>
+    internal static async Task UpsertAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string key,
+        string? value,
+        string updatedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO AppSettings (Key, Value, UpdatedAtUtc) VALUES ($key, $value, $updatedAt)
+            ON CONFLICT (Key) DO UPDATE SET Value = excluded.Value, UpdatedAtUtc = excluded.UpdatedAtUtc;
+            """;
+        command.Parameters.AddWithValue("$key", key);
+        command.Parameters.AddWithValue("$value", (object?)value ?? DBNull.Value);
+        command.Parameters.AddWithValue("$updatedAt", updatedAtUtc);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }
