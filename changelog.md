@@ -6,6 +6,9 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- Main window "Today" tiles (uptime, incidents and downtime, monitoring coverage) and a
+  "Recent incidents" list for the last 7 days, refreshed every minute and whenever incident state
+  changes. Uptime is truncated, not rounded, so a day with an outage never shows 100.00 %.
 - Daily statistics calculator in Core (`Statistics`): elapsed, observed, healthy, outage and
   unmonitored time, uptime (healthy / observed, gaps excluded) and monitoring coverage, incident
   count and longest, DNS/HTTPS failure counts, and per probe type and target latency

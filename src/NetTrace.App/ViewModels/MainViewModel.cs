@@ -42,17 +42,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IClock clock,
         IApplicationShell shell,
         IMonitoringStatusSource statusSource,
-        IThroughputSource throughput)
+        IThroughputSource throughput,
+        HistoryViewModel history)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(shell);
         ArgumentNullException.ThrowIfNull(statusSource);
         ArgumentNullException.ThrowIfNull(throughput);
+        ArgumentNullException.ThrowIfNull(history);
 
         _clock = clock;
         _statusSource = statusSource;
         _throughput = throughput;
+        History = history;
         // Created on the UI thread; updates arrive on the thread pool and are posted back.
         _uiContext = SynchronizationContext.Current;
 
@@ -71,6 +74,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         statusSource.StatusChanged += OnStatusChanged;
         throughput.SampleAvailable += OnSampleAvailable;
     }
+
+    public HistoryViewModel History { get; }
 
     public string Title => "NetTrace";
 
@@ -140,6 +145,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _statusSource.StatusChanged -= OnStatusChanged;
         _throughput.SampleAvailable -= OnSampleAvailable;
+        History.Dispose();
     }
 
     private void OnStatusChanged(object? sender, MonitoringStatus status) => Post(() => Apply(status));

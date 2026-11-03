@@ -118,6 +118,71 @@
                 </Border>
             </WrapPanel>
 
+            <!-- Today -->
+            <TextBlock Text="Today" Style="{StaticResource SectionTitleTextStyle}" />
+            <WrapPanel Margin="0,0,-12,0">
+                <Border Style="{StaticResource TileBorderStyle}" ToolTip="{Binding History.UptimeDefinition}">
+                    <StackPanel>
+                        <TextBlock Text="Uptime" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding History.Uptime}" Style="{StaticResource TileValueTextStyle}" Margin="0,6,0,2" />
+                        <TextBlock Text="of monitored time" Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource TileBorderStyle}" ToolTip="Outages NetTrace confirmed today, after several failed checks in a row.">
+                    <StackPanel>
+                        <TextBlock Text="Incidents" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding History.IncidentCount}" Style="{StaticResource TileValueTextStyle}" Margin="0,6,0,2" />
+                        <TextBlock Text="{Binding History.OutageTime, StringFormat=Down for {0}}" Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource TileBorderStyle}"
+                        ToolTip="How much of today NetTrace was actually monitoring. Unmonitored time is never counted as uptime or downtime.">
+                    <StackPanel>
+                        <TextBlock Text="Coverage" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding History.Coverage}" Style="{StaticResource TileValueTextStyle}" Margin="0,6,0,2" />
+                        <TextBlock Text="{Binding History.UnmonitoredTime, StringFormat=Not monitored {0}}" Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- Recent incidents -->
+            <TextBlock Text="Recent incidents" Style="{StaticResource SectionTitleTextStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}" Padding="0">
+                <StackPanel>
+                    <TextBlock Text="No incidents in the last 7 days." Style="{StaticResource CaptionTextStyle}" Margin="20,16">
+                        <TextBlock.Visibility>
+                            <Binding Path="History.Incidents.Count">
+                                <Binding.Converter>
+                                    <local:ZeroToVisibleConverter />
+                                </Binding.Converter>
+                            </Binding>
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding History.Incidents}" AutomationProperties.Name="Recent incidents">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:IncidentRowViewModel}">
+                                <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="False">
+                                            <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <Border DockPanel.Dock="Left" Style="{StaticResource ChipBorderStyle}" Margin="10,0,0,0" Padding="8,1">
+                                                <TextBlock Text="{Binding Status}" Style="{StaticResource CaptionTextStyle}" />
+                                            </Border>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding Duration}" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Explanation}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        <TextBlock Text="{Binding When}" Style="{StaticResource CaptionTextStyle}" Margin="0,4,0,0" />
+                                        <TextBlock Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap">
+                                            <Run Text="{Binding Confidence, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding Evidence, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- Latest measurements -->
             <TextBlock Text="Latest checks" Style="{StaticResource SectionTitleTextStyle}" />
             <Border Style="{StaticResource CardBorderStyle}" Padding="0">

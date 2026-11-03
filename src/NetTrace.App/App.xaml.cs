@@ -112,6 +112,7 @@ public partial class App : Application
 
         builder.Services.AddNetTraceInfrastructure(paths);
         builder.Services.AddSingleton<IApplicationShell, WpfApplicationShell>();
+        builder.Services.AddSingleton<HistoryViewModel>();
         builder.Services.AddSingleton<MainViewModel>();
         builder.Services.AddSingleton<MainWindow>();
         builder.Services.AddSingleton<TrayIconService>();

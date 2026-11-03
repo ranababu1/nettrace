@@ -70,7 +70,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-04: `dotnet test NetTrace.sln -c Release`, 215 passed, 0 failed, 0 skipped.
+2026-11-04: `dotnet test NetTrace.sln -c Release`, 225 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -79,6 +79,6 @@ None.
 
 ## 10. Next recommended tasks
 
-1. UI: incident timeline and a daily summary view using `DailyStatisticsCalculator`
-   (load observations, incidents and gaps for the day from the repositories).
+1. Per-day history view (pick a date, latency chart, incident detail) and the export/report
+   pipeline in `NetTrace.Reporting`.
 2. Use the latest observation to tighten the start of crash gaps.
