@@ -51,16 +51,15 @@ None.
 
 ## 9. Last commit/push
 
-Commits are local on `main`. **Not pushed yet:** pushing to the public GitHub repo was
-blocked pending user confirmation in this session.
+`main` is pushed to `origin`. History was rewritten once on 2026-11-03 (authorized) to
+remove commit-message trailers; trees were unchanged.
 
 ## 10. Next recommended tasks
 
-1. Push `main` to `origin` once approved.
-2. SQLite schema and migrations (`Microsoft.Data.Sqlite`, or EF Core; decision needed per
+1. SQLite schema and migrations (`Microsoft.Data.Sqlite`, or EF Core; decision needed per
    plan.md section 2) with `ApplicationEvents` and `AppSettings` tables, plus migration tests.
-3. Settings persistence (`ISettingsRepository`) and `MonitoringConfiguration` with validation
+2. Settings persistence (`ISettingsRepository`) and `MonitoringConfiguration` with validation
    (intervals 5/10/15/30/60 s).
-4. Network interface and default gateway discovery (`INetworkInterfaceProvider`) with fakes.
-5. Gateway and external ICMP probes with timeouts, plus a non-overlapping scheduler.
-6. Record application start/stop markers and reconcile unclean shutdowns as unknown gaps.
+3. Network interface and default gateway discovery (`INetworkInterfaceProvider`) with fakes.
+4. Gateway and external ICMP probes with timeouts, plus a non-overlapping scheduler.
+5. Record application start/stop markers and reconcile unclean shutdowns as unknown gaps.

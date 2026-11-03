@@ -1,68 +1,58 @@
 # NetTrace
 
-NetTrace is a local-first Windows network reliability monitor. It is intended to run in the
-background, record timestamped connectivity observations, classify incidents cautiously and
-export evidence (JSON/CSV with SHA-256 checksums) that you can share with your ISP.
+**Know exactly when your internet failed, and prove it.**
 
-> **Status:** early scaffold (v0.1.0). The application shell, dependency injection, structured
-> logging and data-folder layout exist. Network monitoring is **not** implemented yet, and the
-> app reports its state as *Unmonitored*. See [`currentstate.md`](currentstate.md).
+NetTrace is a lightweight Windows app that quietly watches your network connection in the
+background. It records when your connection drops, slows down or becomes unreliable, then
+gives you a clear, timestamped report you can send to your internet provider.
 
-Product scope and architecture: [`docs/plan.md`](docs/plan.md). Engineering rules:
-[`docs/instructions.md`](docs/instructions.md).
+It's not a speed test. NetTrace is about reliability over time: the outages at 2 a.m., the
+calls that keep dropping, the evenings when everything crawls. Those are the problems that are
+hard to describe to support and easy for them to dismiss.
+
+> **Early development.** NetTrace is not ready for everyday use yet. The app opens, but it does
+> not monitor your connection yet. The features below describe what version 1.0 will do.
+
+## What NetTrace will do
+
+- **Monitor continuously.** It checks your connection every few seconds from the system tray,
+  without getting in your way.
+- **Pinpoint where the problem is.** It tells your router or Wi-Fi apart from problems beyond
+  your home, and spots DNS failures and sites that fail on their own.
+- **Measure connection quality.** It tracks latency, packet loss and jitter, so you can see
+  slowdowns as well as full outages.
+- **Show live usage in the tray.** Your current download and upload rate is always visible at a
+  glance.
+- **Keep a daily history.** Browse each day's uptime, incidents and connection quality.
+- **Export evidence.** Create JSON and CSV reports for a day or any date range, with a
+  checksum so anyone can confirm the report hasn't changed since you exported it.
+
+## Honest by design
+
+NetTrace is careful not to overstate what it knows:
+
+- **Sleep and shutdown are not outages.** Time when your PC was off, asleep or not monitoring
+  is shown as a gap. It never counts as downtime.
+- **One failed check is not an outage.** Incidents are confirmed only after repeated failures
+  across independent checks.
+- **No false blame.** Reports describe what was observed, for example "external connectivity
+  unavailable while your router responded". They never claim to prove your provider was at
+  fault.
+- **Missing means missing.** If something can't be measured, NetTrace says so instead of
+  showing zero.
+
+## Private by default
+
+- Everything stays on your PC, in `%LOCALAPPDATA%\NetTrace\`.
+- No account, no cloud and no telemetry.
+- NetTrace never reads your traffic or browsing, and never stores Wi-Fi passwords.
+- Before exporting, you can hide your Wi-Fi network name and IP addresses.
 
 ## Requirements
 
-- Windows 10 or 11, x64
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (10.0.100 or later)
+Windows 10 or Windows 11 (64-bit).
 
-## Build, test and run
+## Status
 
-```powershell
-dotnet restore NetTrace.sln
-dotnet build NetTrace.sln -c Release
-dotnet test NetTrace.sln -c Release
-dotnet run --project src/NetTrace.App -c Release
-```
-
-You can also open `NetTrace.sln` in Visual Studio 2026 and run `NetTrace.App`.
-
-Only one instance runs per Windows user session. Launching it again brings the running
-window to the front.
-
-## Solution layout
-
-| Project | Purpose |
-| --- | --- |
-| `src/NetTrace.Core` | Domain types, rules and interfaces. No WPF, SQLite or network implementation dependencies (enforced by a test). |
-| `src/NetTrace.Infrastructure` | Clock, data paths and the file logger. SQLite, Windows APIs and network probes will go here. |
-| `src/NetTrace.Reporting` | Export and integrity functions (SHA-256 checksums so far). |
-| `src/NetTrace.App` | WPF application: generic host, DI, view models and window lifecycle. |
-| `tests/*` | xUnit tests. They need no internet access. |
-
-## Data location
-
-All mutable data lives under `%LOCALAPPDATA%\NetTrace\`, never beside the executable:
-
-| Path | Contents |
-| --- | --- |
-| `nettrace.db` | SQLite database (not created yet) |
-| `Logs\nettrace-yyyyMMdd.jsonl` | Structured application log, one JSON object per line, one file per UTC day |
-| `Exports\` | User exports |
-
-NetTrace sends no telemetry and has no cloud dependency. The data folder can contain
-sensitive network metadata, so be careful before sharing it.
-
-### Log format
-
-Each log line is a JSON object with `timestamp_utc` (ISO 8601, UTC), `level`, `category`,
-optional `event_id`/`event_name`, `message`, an optional `properties` object holding the
-structured message values, and an optional `exception` object. The logger queues at most
-4096 entries in memory. If the queue fills, extra entries are counted and a warning is
-written in their place, so memory use stays bounded.
-
-## Troubleshooting
-
-- **Nothing happens when I start NetTrace:** another instance may already be running in your
-  session. It should come to the front. Check Task Manager for `NetTrace.App.exe`.
-- **Startup error dialog:** check the newest file in `%LOCALAPPDATA%\NetTrace\Logs\`.
+NetTrace is in early development. Releases with an installer will be published on this
+repository's Releases page once version 1.0 is ready.
