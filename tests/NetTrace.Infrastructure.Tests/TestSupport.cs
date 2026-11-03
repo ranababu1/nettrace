@@ -22,6 +22,8 @@ internal sealed class TempDirectory : IDisposable
 
     public void Dispose()
     {
+        // Pooled SQLite connections keep database files open; release them before deleting.
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try
         {
             Directory.Delete(Path, recursive: true);
