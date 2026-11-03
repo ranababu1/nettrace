@@ -1,0 +1,42 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.nupkg
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.xml
+*.coverage
+
+# IDE / local machine state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+*.DotSettings.user
+.claude/
+.mcp.json
+
+# Local data: databases, backups, exports, monitoring history
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.bak
+Exports/
+Backups/
+
+# Secrets
+*.pfx
+*.snk
+*.pem
+secrets.json
+appsettings.*.local.json
