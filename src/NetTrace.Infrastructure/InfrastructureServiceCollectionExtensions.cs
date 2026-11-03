@@ -8,6 +8,7 @@ using NetTrace.Core.Time;
 using NetTrace.Infrastructure.Configuration;
 using NetTrace.Infrastructure.Lifecycle;
 using NetTrace.Core.Probes;
+using NetTrace.Core.Retention;
 using NetTrace.Infrastructure.Logging;
 using NetTrace.Infrastructure.Monitoring;
 using NetTrace.Infrastructure.Power;
@@ -46,6 +47,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IMonitoringGapRepository>(sp => sp.GetRequiredService<SqliteMonitoringRepository>());
 
         services.AddSingleton<IIncidentRepository, SqliteIncidentRepository>();
+        services.AddSingleton<IRetentionService, SqliteRetentionService>();
 
         // Hosted services start in registration order: the schema must exist before lifecycle records.
         services.AddSingleton<SqliteLifecycleStore>();
