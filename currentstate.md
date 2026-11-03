@@ -3,8 +3,9 @@
 ## 1. Project status
 
 The initial scaffold (instructions.md section 18) is complete. Phase 1 (Foundation) of
-`docs/plan.md` is in progress: DI, logging and the SQLite schema/migrations are done.
-Settings, network discovery, probes and the monitoring lifecycle are not.
+`docs/plan.md` is in progress: DI, logging, the SQLite schema/migrations, settings and
+application lifecycle/gap tracking are done. Network discovery, probes and the monitoring
+scheduler are not.
 
 ## 2. Current version
 
@@ -23,6 +24,10 @@ Settings, network discovery, probes and the monitoring lifecycle are not.
 - SQLite database `%LOCALAPPDATA%\NetTrace\nettrace.db`: schema v1 (all plan.md section 7
   tables and indexes), forward-only migrations applied at startup, WAL, busy timeout plus
   bounded retry, and refusal of databases from newer app versions.
+- Monitoring configuration with plan defaults and validation, persisted as versioned JSON
+  in `AppSettings`.
+- Lifecycle tracking: start/stop events, 30 s heartbeat, and startup reconciliation into
+  `ApplicationNotRunning` / `UnexpectedTermination` monitoring gaps.
 - SHA-256 checksum compute/verify for exports.
 - Shell window showing the *Unmonitored* state, the version and the data folder.
 
@@ -51,7 +56,7 @@ None.
 
 ## 8. Last test result
 
-2026-11-03: `dotnet test NetTrace.sln -c Release`, 34 passed, 0 failed, 0 skipped.
+2026-11-03: `dotnet test NetTrace.sln -c Release`, 82 passed, 0 failed, 0 skipped.
 
 ## 9. Last commit/push
 
@@ -60,10 +65,10 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Settings persistence (`ISettingsRepository` over `AppSettings`) and `MonitoringConfiguration`
-   with validation (intervals 5/10/15/30/60 s, timeouts, targets).
-2. Record application start/stop markers in `ApplicationEvents`, and reconcile unclean
-   shutdowns as unknown monitoring gaps.
-3. Network interface and default gateway discovery (`INetworkInterfaceProvider`) with fakes.
-4. Gateway and external ICMP probes with timeouts, plus a non-overlapping scheduler.
-5. Observation repository with batched writes.
+1. Network interface and default gateway discovery (`INetworkInterfaceProvider`) with fakes,
+   refreshed on network-change events plus periodic reconciliation.
+2. Gateway and external ICMP probes with timeouts, plus a non-overlapping scheduler.
+3. Observation repository with batched writes.
+4. Sleep/resume handling: record `SystemSleep` gaps and refresh network context on resume.
+5. Known limitation to revisit: the gap after a crash starts at the last heartbeat (at most
+   30 s before the crash). Once observations exist, use the latest observation if it is newer.

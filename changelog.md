@@ -33,6 +33,22 @@ All notable changes to NetTrace. Newest entries first.
   busy/locked errors.
 - Timestamps are stored as fixed-width ISO 8601 UTC text, so text order equals time order.
 
+- `MonitoringConfiguration` with the plan defaults: 5 s interval; gateway plus `1.1.1.1` and
+  `8.8.8.8` ICMP; DNS (`example.com`) and HTTPS (`google.com/generate_204`,
+  `cloudflare.com/cdn-cgi/trace`) every 30 s; 3-cycle outage confirmation and 3-cycle
+  recovery; 60 s merge window; public IP lookup **off** by default. A validator enforces the
+  allowed intervals, timeouts shorter than their interval, IP-literal ICMP targets, https-only
+  endpoints without credentials, and confirmation thresholds of at least 2.
+- Settings persistence: `ISettingsRepository` over `AppSettings` with transactional
+  multi-key writes. `MonitoringConfigurationStore` keeps the configuration as snake_case JSON
+  with a version that increments on every save. Missing fields take their defaults. Unreadable
+  or invalid stored settings fall back to defaults with a warning and are not overwritten.
+- Application lifecycle: `ApplicationStarted`/`ApplicationStopped` events, a 30 s heartbeat,
+  and startup reconciliation. Time since a clean stop is recorded as an `ApplicationNotRunning`
+  monitoring gap. After a crash or kill, the gap is `UnexpectedTermination`, starting at the
+  last heartbeat. Neither is ever treated as an outage. If the clock moved backwards, a
+  `ClockDiscontinuityDetected` event is recorded instead of a gap.
+
 ### Changed
 
 - README rewritten as a user-facing product description.
@@ -44,12 +60,16 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Tests/validation
 
-- 34 tests pass (`dotnet test NetTrace.sln -c Release`): Core dependency rule, data-path
+- 82 tests pass (`dotnet test NetTrace.sln -c Release`), including configuration validation,
+  settings round-trip and fallback, lifecycle reconciliation rules, and lifecycle integration
+  (clean stop, crash, unreadable session). Earlier coverage: Core dependency rule, data-path
   layout and validation, logger output/levels/rollover/disposal, SHA-256 known vector and
   tamper detection, migrations (fresh database, idempotence with data preserved, pending-only
   application, rollback on failure, newer-version refusal, WAL, sequence validation), retry
   behaviour, and the timestamp format.
 - Manual smoke test: the first launch applied migration 1, and the second reported the schema
-  current at version 1.
+  current at version 1. Clean stop followed by a restart recorded an `ApplicationNotRunning`
+  gap. A forced kill followed by a restart recorded an `UnexpectedTermination` gap and an
+  unclean-shutdown warning.
 - Manual smoke test: the app starts, a second launch exits with code 0, closing the window
   exits with code 0, and start/stop entries are written to the log.

@@ -67,8 +67,8 @@ public sealed class ApplicationLifecycleService(
             logger.LogInformation(
                 "Recorded monitoring gap {GapReason} from {GapStartUtc} to {GapEndUtc}.",
                 gap.Reason,
-                gap.StartedAtUtc,
-                gap.EndedAtUtc);
+                gap.StartedAtUtc.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+                gap.EndedAtUtc?.UtcDateTime.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
         }
 
         if (reconciliation.Events.Any(e => e.EventType == ApplicationEventType.UncleanShutdownDetected))
