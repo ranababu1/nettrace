@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Time;
 using NetTrace.Infrastructure.Logging;
+using NetTrace.Infrastructure.Persistence;
+using NetTrace.Infrastructure.Persistence.Migrations;
 using NetTrace.Infrastructure.Storage;
 using NetTrace.Infrastructure.Time;
 
@@ -16,6 +18,9 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddSingleton(paths);
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton(new SqliteConnectionFactory(paths.DatabasePath));
+        services.AddSingleton<DatabaseMigrator>();
+        services.AddHostedService<DatabaseInitializer>();
         return services;
     }
 
