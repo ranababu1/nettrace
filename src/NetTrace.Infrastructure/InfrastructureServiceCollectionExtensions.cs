@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetTrace.Core.Configuration;
+using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
 using NetTrace.Core.Time;
 using NetTrace.Infrastructure.Configuration;
@@ -30,6 +31,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IMonitoringConfigurationStore, MonitoringConfigurationStore>();
 
         services.AddSingleton<INetworkInterfaceProvider, SystemNetworkInterfaceProvider>();
+        services.AddSingleton<SqliteMonitoringRepository>();
+        services.AddSingleton<IObservationRepository>(sp => sp.GetRequiredService<SqliteMonitoringRepository>());
+        services.AddSingleton<IMonitoringGapRepository>(sp => sp.GetRequiredService<SqliteMonitoringRepository>());
 
         // Hosted services start in registration order: the schema must exist before lifecycle records.
         services.AddSingleton<SqliteLifecycleStore>();

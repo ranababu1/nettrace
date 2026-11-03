@@ -13,9 +13,16 @@ public static class SchemaMigrations
     public static IReadOnlyList<SchemaMigration> All { get; } =
     [
         new(1, "InitialSchema", InitialSchemaSql),
+        new(2, "ObservationOutcome", ObservationOutcomeSql),
     ];
 
     public static int LatestVersion => All[^1].Version;
+
+    // Success/TimedOut alone cannot distinguish Failure, Error and Skipped. Rows written before
+    // this migration keep a NULL Outcome and are read back from Success/TimedOut.
+    private const string ObservationOutcomeSql = """
+        ALTER TABLE NetworkObservations ADD COLUMN Outcome TEXT NULL;
+        """;
 
     private const string InitialSchemaSql = """
         CREATE TABLE NetworkObservations (
