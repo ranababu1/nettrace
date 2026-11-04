@@ -3,6 +3,7 @@ using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using NetTrace.Core.Monitoring;
+using NetTrace.Core.Notifications;
 using NetTrace.Core.Throughput;
 using Forms = System.Windows.Forms;
 
@@ -13,6 +14,9 @@ namespace NetTrace.App.Services;
 /// (plan.md section 4.11) and the tooltip shows both rates, the tracked connection and the
 /// monitoring state. Updates happen on the UI thread at most once per throughput sample.
 /// </summary>
+/// <summary>Actions the tray menu can trigger; supplied by the application so the tray stays UI-framework-light.</summary>
+public sealed record TrayActions(Action OpenWindow, Action OpenSettings, Action ExportToday, Action ToggleMonitoring);
+
 public sealed class TrayIconService : IDisposable
 {
     private const int MaxTooltipLength = 127;
@@ -26,6 +30,7 @@ public sealed class TrayIconService : IDisposable
     private Icon? _rateIcon;
     private Forms.ToolStripMenuItem? _statusItem;
     private Forms.ToolStripMenuItem? _rateItem;
+    private Forms.ToolStripMenuItem? _toggleItem;
     private string? _renderedText;
     private bool _hideNoticeShown;
 
@@ -37,14 +42,16 @@ public sealed class TrayIconService : IDisposable
     }
 
     /// <summary>Creates the tray icon. Must be called on the UI thread.</summary>
-    public void Initialize(Action openWindow)
+    public void Initialize(TrayActions actions)
     {
-        ArgumentNullException.ThrowIfNull(openWindow);
+        ArgumentNullException.ThrowIfNull(actions);
+        var openWindow = actions.OpenWindow;
         _uiContext = SynchronizationContext.Current;
         _appIcon = LoadAppIcon();
 
         _statusItem = new Forms.ToolStripMenuItem { Enabled = false };
         _rateItem = new Forms.ToolStripMenuItem { Enabled = false };
+        _toggleItem = new Forms.ToolStripMenuItem("Pause monitoring", null, (_, _) => actions.ToggleMonitoring());
         var open = new Forms.ToolStripMenuItem("Open NetTrace", null, (_, _) => openWindow())
         {
             Font = new Font(Forms.Control.DefaultFont, System.Drawing.FontStyle.Bold),
@@ -56,6 +63,10 @@ public sealed class TrayIconService : IDisposable
             new Forms.ToolStripSeparator(),
             _statusItem,
             _rateItem,
+            new Forms.ToolStripSeparator(),
+            _toggleItem,
+            new Forms.ToolStripMenuItem("Export today's report", null, (_, _) => actions.ExportToday()),
+            new Forms.ToolStripMenuItem("Settings", null, (_, _) => actions.OpenSettings()),
             new Forms.ToolStripSeparator(),
             new Forms.ToolStripMenuItem("Exit", null, (_, _) => _shell.RequestExit()),
         ]);
@@ -78,6 +89,17 @@ public sealed class TrayIconService : IDisposable
         _throughput.SampleAvailable += OnSample;
         _status.StatusChanged += OnStatus;
         Refresh();
+    }
+
+    /// <summary>Shows a Windows notification from the tray icon. Safe to call from any thread.</summary>
+    public void ShowNotification(Notification notification)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+        _uiContext?.Post(_ => _notifyIcon?.ShowBalloonTip(
+            8000,
+            notification.Title,
+            notification.Message,
+            notification.Kind == NotificationKind.Recovery ? Forms.ToolTipIcon.Info : Forms.ToolTipIcon.Warning), null);
     }
 
     /// <summary>Tells the user once per session that closing the window keeps NetTrace running.</summary>
@@ -152,6 +174,11 @@ public sealed class TrayIconService : IDisposable
         }
 
         _statusItem.Text = "Monitoring: " + state;
+        if (_toggleItem is not null)
+        {
+            _toggleItem.Text = _status.Current.State == MonitoringState.Disabled ? "Resume monitoring" : "Pause monitoring";
+        }
+
         _rateItem.Text = "Current usage: " + rateLine;
 
         var tooltip = $"NetTrace - {state}\n{rateLine}";

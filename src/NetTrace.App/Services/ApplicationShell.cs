@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -14,6 +14,9 @@ public interface IApplicationShell
     void RequestExit();
 
     void OpenFolder(string path);
+
+    /// <summary>Asks a yes/no question on the UI thread. Defaults to No.</summary>
+    bool Confirm(string title, string message);
 }
 
 internal sealed class WpfApplicationShell : IApplicationShell
@@ -25,6 +28,9 @@ internal sealed class WpfApplicationShell : IApplicationShell
         IsExiting = true;
         Application.Current.Shutdown(0);
     }
+
+    public bool Confirm(string title, string message) =>
+        MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
     public void OpenFolder(string path)
     {

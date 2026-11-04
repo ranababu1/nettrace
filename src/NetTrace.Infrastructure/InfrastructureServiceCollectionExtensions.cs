@@ -61,6 +61,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<MonitoringService>();
         services.AddSingleton<IMonitoringStatusSource>(sp => sp.GetRequiredService<MonitoringService>());
         services.AddSingleton<IMonitoringControl>(sp => sp.GetRequiredService<MonitoringService>());
+        services.AddSingleton<IIncidentFeed>(sp => sp.GetRequiredService<MonitoringService>());
         services.AddHostedService(sp => sp.GetRequiredService<MonitoringService>());
 
         services.AddSingleton<IInterfaceCounterReader, SystemInterfaceCounterReader>();

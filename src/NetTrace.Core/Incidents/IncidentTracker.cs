@@ -1,4 +1,4 @@
-using NetTrace.Core.Configuration;
+﻿using NetTrace.Core.Configuration;
 using NetTrace.Core.Monitoring;
 
 namespace NetTrace.Core.Incidents;
@@ -65,7 +65,7 @@ public sealed class IncidentTracker
         var changes = new List<IncidentChange>();
         if (Open is { } open)
         {
-            Close(open, _lastFailingAt, changes);
+            Close(open, _lastFailingAt, changes, IncidentChangeKind.Interrupted);
         }
         else if (_failStreak > 0)
         {
@@ -154,13 +154,13 @@ public sealed class IncidentTracker
         }
     }
 
-    private void Close(Incident open, DateTimeOffset endedAt, List<IncidentChange> changes)
+    private void Close(Incident open, DateTimeOffset endedAt, List<IncidentChange> changes, IncidentChangeKind kind = IncidentChangeKind.Closed)
     {
         var closed = open with { EndedAtUtc = endedAt };
         _lastClosed = closed;
         Open = null;
         _failStreak = 0;
         _healthyStreak = 0;
-        changes.Add(new IncidentChange(IncidentChangeKind.Closed, endedAt, closed, null));
+        changes.Add(new IncidentChange(kind, endedAt, closed, null));
     }
 }

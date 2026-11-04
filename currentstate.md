@@ -79,6 +79,21 @@ None.
 
 ## 10. Next recommended tasks
 
-1. Per-day history view (pick a date, latency chart, incident detail) and the export/report
-   pipeline in `NetTrace.Reporting`.
-2. Use the latest observation to tighten the start of crash gaps.
+Work in progress (resume here). The back end is done and tested; the App layer is wired but the
+new screens have no XAML yet:
+
+1. `MainWindow.xaml`: wrap the existing dashboard `ScrollViewer` in a `TabControl` with tabs
+   Dashboard / History / Reports / Settings, bound to `MainViewModel.DayHistory`, `.Reports`,
+   `.Settings` and `.SelectedTab` (view models already exist and are registered in DI).
+2. Tray actions in `App.xaml.cs`: "Settings" should set `SelectedTab = 3` and show the window;
+   "Export today's report" should report success/failure (notification or Reports tab message);
+   "Pause/Resume monitoring" is a no-op stub, wire it to `MonitoringSettingsService.SetEnabledAsync`.
+3. Honour `AppPreferences` at startup/close: `CloseToTray` in `MainWindow.OnClosing`,
+   `--minimized` start argument, and call `PreferencesService.ApplyStartup` after loading preferences.
+4. Wi-Fi diagnostics (SSID, signal) with "unavailable" reasons; persist throughput display options.
+5. Packaging: publish script/installer, resource-use profiling, DB backup strategy, release validation.
+6. Use the latest observation to tighten the start of crash gaps.
+
+Done since the last summary: sleep/resume gaps, DNS/HTTPS probes, outage detection, incident
+persistence, daily statistics, dashboard summary, JSON/CSV export with manifest, preferences and
+startup registration, retention cleanup, live settings reload, notification policy.

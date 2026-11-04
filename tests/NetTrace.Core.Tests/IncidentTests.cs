@@ -1,4 +1,4 @@
-using NetTrace.Core.Configuration;
+﻿using NetTrace.Core.Configuration;
 using NetTrace.Core.Incidents;
 using NetTrace.Core.Monitoring;
 using NetTrace.Core.Network;
@@ -239,7 +239,7 @@ public class IncidentTests
     {
         var open = ConfirmedTracker();
         var closed = Assert.Single(open.ObserveGap(T(10)));
-        Assert.Equal(IncidentChangeKind.Closed, closed.Kind);
+        Assert.Equal(IncidentChangeKind.Interrupted, closed.Kind);
         Assert.Equal(T(2).AddSeconds(0.1), closed.Incident!.EndedAtUtc);
 
         var suspected = new IncidentTracker(new MonitoringConfiguration());

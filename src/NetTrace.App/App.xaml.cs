@@ -51,7 +51,12 @@ public partial class App : Application
             window.Show();
 
             var tray = _host.Services.GetRequiredService<TrayIconService>();
-            tray.Initialize(ActivateMainWindow);
+            tray.Initialize(new TrayActions(
+                ActivateMainWindow,
+                ActivateMainWindow,
+                () => _ = _host.Services.GetRequiredService<ReportService>().ExportTodayAsync(),
+                () => { }));
+            _host.Services.GetRequiredService<NotificationService>().Attach(tray);
             window.HiddenToTray += (_, _) => tray.NotifyHiddenToTray();
 
             _instanceGuard.ActivationRequested += () => Dispatcher.BeginInvoke(ActivateMainWindow);
@@ -112,7 +117,15 @@ public partial class App : Application
 
         builder.Services.AddNetTraceInfrastructure(paths);
         builder.Services.AddSingleton<IApplicationShell, WpfApplicationShell>();
+        builder.Services.AddSingleton<NetTrace.Reporting.ReportExporter>();
+        builder.Services.AddSingleton<ReportService>();
+        builder.Services.AddSingleton<MonitoringSettingsService>();
+        builder.Services.AddSingleton<PreferencesService>();
+        builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddSingleton<HistoryViewModel>();
+        builder.Services.AddSingleton<DayHistoryViewModel>();
+        builder.Services.AddSingleton<ReportsViewModel>();
+        builder.Services.AddSingleton<SettingsViewModel>();
         builder.Services.AddSingleton<MainViewModel>();
         builder.Services.AddSingleton<MainWindow>();
         builder.Services.AddSingleton<TrayIconService>();

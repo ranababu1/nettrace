@@ -19,6 +19,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly IThroughputSource _throughput;
     private readonly IClock _clock;
     private readonly SynchronizationContext? _uiContext;
+    private int _selectedTab;
     private string _monitoringState = string.Empty;
     private string _monitoringStateDescription = string.Empty;
     private string _monitoringStateGlyph = string.Empty;
@@ -43,7 +44,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         IApplicationShell shell,
         IMonitoringStatusSource statusSource,
         IThroughputSource throughput,
-        HistoryViewModel history)
+        HistoryViewModel history,
+        DayHistoryViewModel dayHistory,
+        ReportsViewModel reports,
+        SettingsViewModel settings)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(clock);
@@ -56,6 +60,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _statusSource = statusSource;
         _throughput = throughput;
         History = history;
+        DayHistory = dayHistory;
+        Reports = reports;
+        Settings = settings;
         // Created on the UI thread; updates arrive on the thread pool and are posted back.
         _uiContext = SynchronizationContext.Current;
 
@@ -76,6 +83,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public HistoryViewModel History { get; }
+
+    public DayHistoryViewModel DayHistory { get; }
+
+    public ReportsViewModel Reports { get; }
+
+    public SettingsViewModel Settings { get; }
+
+    /// <summary>0 Dashboard, 1 History, 2 Reports, 3 Settings.</summary>
+    public int SelectedTab { get => _selectedTab; set => SetProperty(ref _selectedTab, value); }
 
     public string Title => "NetTrace";
 

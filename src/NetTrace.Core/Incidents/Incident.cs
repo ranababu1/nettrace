@@ -1,4 +1,4 @@
-namespace NetTrace.Core.Incidents;
+﻿namespace NetTrace.Core.Incidents;
 
 /// <summary>
 /// A confirmed period of failing connectivity. <see cref="StartedAtUtc"/> is the first failing
@@ -32,6 +32,9 @@ public enum IncidentChangeKind
     Reopened,
 
     Closed,
+
+    /// <summary>Monitoring was interrupted (sleep, shutdown, disabled) while the incident was open. This is not a recovery.</summary>
+    Interrupted,
 }
 
 public sealed record IncidentChange(IncidentChangeKind Kind, DateTimeOffset AtUtc, Incident? Incident, string? Summary);

@@ -14,7 +14,7 @@ namespace NetTrace.Infrastructure.Monitoring;
 /// slots (stalls, sleep) become monitoring gaps of unknown cause, and disabled monitoring is an
 /// explicit gap. Runs independently of any window.
 /// </summary>
-public sealed class MonitoringService : BackgroundService, IMonitoringStatusSource, IMonitoringControl
+public sealed class MonitoringService : BackgroundService, IMonitoringStatusSource, IMonitoringControl, IIncidentFeed
 {
     /// <summary>Network context is re-read at least this often even without change events.</summary>
     public static readonly TimeSpan NetworkReconciliationInterval = TimeSpan.FromSeconds(60);
@@ -75,6 +75,8 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
     }
 
     public event EventHandler<MonitoringStatus>? StatusChanged;
+
+    public event EventHandler<IncidentChange>? IncidentChanged;
 
     public MonitoringStatus Current => Volatile.Read(ref _status);
 
@@ -249,6 +251,7 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         foreach (var change in changes)
         {
             _logger.LogInformation("Incident {Kind}: {Summary}", change.Kind, change.Summary ?? change.Incident?.Classification.ToString());
+            RaiseIncidentChanged(change);
             if (change.Incident is not { } incident)
             {
                 continue;
@@ -317,6 +320,19 @@ public sealed class MonitoringService : BackgroundService, IMonitoringStatusSour
         {
             // Close with a token that is not already cancelled so shutdown still records the end.
             await _gaps.CloseAsync(gapId, _clock.UtcNow, CancellationToken.None).ConfigureAwait(false);
+        }
+    }
+
+    private void RaiseIncidentChanged(IncidentChange change)
+    {
+        try
+        {
+            IncidentChanged?.Invoke(this, change);
+        }
+        catch (Exception ex)
+        {
+            // A misbehaving subscriber must never stop monitoring.
+            _logger.LogError(ex, "An incident change handler failed.");
         }
     }
 

@@ -6,6 +6,18 @@ All notable changes to NetTrace. Newest entries first.
 
 ### Added
 
+- Report export (JSON or CSV bundle) for a day, range or full history: methodology, timezone and
+  UTC boundaries, daily and overall statistics, incidents, monitoring gaps, data-quality notes,
+  optional raw observations, local-address redaction, CSV formula neutralisation, and a
+  `manifest.json` with SHA-256 per file plus a verifier.
+- Application preferences (launch at login, start minimized, close to tray, retention, alerts,
+  export privacy) and per-user startup registration through the `HKCU` Run key.
+- Explicit retention cleanup with preview; daily summaries are saved before raw rows are removed.
+- Monitoring applies saved settings without restart; stopping monitoring closes open incidents
+  as an interruption, never a recovery.
+- Notification policy (outage, restored, monitoring problem) with deduplication and cooldowns,
+  tray notifications, and tray menu entries for export, settings and pause/resume.
+- Settings, Reports and per-day history view models (screens pending).
 - Main window "Today" tiles (uptime, incidents and downtime, monitoring coverage) and a
   "Recent incidents" list for the last 7 days, refreshed every minute and whenever incident state
   changes. Uptime is truncated, not rounded, so a day with an outage never shows 100.00 %.

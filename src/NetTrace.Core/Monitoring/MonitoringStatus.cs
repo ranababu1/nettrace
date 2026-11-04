@@ -34,6 +34,12 @@ public interface IMonitoringControl
     void ReloadConfiguration();
 }
 
+/// <summary>Raised on a background thread for every incident state change.</summary>
+public interface IIncidentFeed
+{
+    event EventHandler<Incidents.IncidentChange>? IncidentChanged;
+}
+
 public interface IMonitoringStatusSource
 {
     MonitoringStatus Current { get; }
